@@ -14,8 +14,7 @@
 
 </div>
 
-
-A backend for Roar Social Network, implemented in Python.
+This repository contains a backend code of Roar Social Network. Roar must to be a distributed social network for communication following the idea on which Twitter is based. Following the operating philosophy of Twitter, the system must provide an infrastructure for managing users, so that they can publish their messages, re-publish messages that they consider interesting from other users, and choose who will be their friends. In addition, as part of user management, a mechanism for distributed authentication must be provided in such a way that a model that is not centralized is achieved.
 
 <p align="right"><a href="#top" style="text-decoration: none;">🔼</a></p>
 

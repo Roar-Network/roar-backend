@@ -9,6 +9,7 @@
 [![MIT License][license-shield]][license-url]
 [![Issues][issues-shield]][issues-url]
 [![Pull Request][pull-request]][pull-request-url]
+![Developed with Python][python-shield]
 <h1>Roar Backend</h1>
 
 </div>
@@ -16,6 +17,7 @@
 
 A backend for Roar Social Network, implemented in Python.
 
+<p align="right"><a href="#top" style="text-decoration: none;">🔼</a></p>
 ## Contributors
 
 <table align="center">
@@ -56,6 +58,7 @@ A backend for Roar Social Network, implemented in Python.
    </tr>
 </table>
 
+<p align="right"><a href="#top" style="text-decoration: none;">🔼</a></p>
 
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
@@ -67,3 +70,4 @@ A backend for Roar Social Network, implemented in Python.
 [license-url]: https://github.com/Roar-Network/roar-backend/blob/master/LICENSE.txt
 [pull-request]: https://img.shields.io/github/issues-pr/Roar-Network/roar-backend.svg?style=flat
 [pull-request-url]: https://github.com/Roar-Network/roar-backend/pulls
+[python-shield]: https://img.shields.io/badge/developed-Python-yellow?styles=flat&logo=python

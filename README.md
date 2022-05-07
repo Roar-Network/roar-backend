@@ -18,6 +18,7 @@
 A backend for Roar Social Network, implemented in Python.
 
 <p align="right"><a href="#top" style="text-decoration: none;">🔼</a></p>
+
 ## Contributors
 
 <table align="center">

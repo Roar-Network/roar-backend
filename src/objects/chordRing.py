@@ -2,6 +2,7 @@ from collections import deque
 from typing import Deque, List, Tuple
 from objects import RObject
 import hashlib
+from collection import Collection
 
 class ChordNode(RObject):
     def __init__(self,id:str) -> None:
@@ -12,6 +13,7 @@ class ChordNode(RObject):
         self._finger=[None for i in range(160)]
         self._successors=[]
         self.next=-1
+        self.partOf:ChordRing=None
 
     def __repr__(self) -> str:
         return 'chordNode ' + str(self.id)
@@ -77,15 +79,18 @@ class ChordNode(RObject):
 
     def add(self, item:RObject):
         node=self.find_successor(item.id)
+        if item.id not in node.objects:
+            self.partOf.total_items+=1
         node.objects[item.id]=item
     
     def remove(self,id):
         node=self.find_successor(id)
         del node.objects[id]
+        self.partOf.total_items-=1
 
-class ChordRing(RObject):
+class ChordRing(Collection):
     def __init__(self, id: str,servers:List[str]) -> None:
-        super().__init__(id, 'ChordCollection')
+        super().__init__(id, 'ChordRing')
         
         if len(servers)==0:
             raise Exception('Empty servers list')
@@ -93,7 +98,9 @@ class ChordRing(RObject):
         servers_list:List[ChordNode]=[]
         
         for server in servers:
-            servers_list.append(ChordNode(server))
+            node=ChordNode(server)
+            node.partOf=self
+            servers_list.append(node)
 
         servers_sorted_list:List[ChordNode]=sorted(servers_list, key=lambda item : item.id)
         
@@ -155,3 +162,13 @@ class ChordRing(RObject):
     
     def remove(self,id):
         self.first.remove(id)
+
+    @property
+    def items(self):
+        for item in self.first.objects.values():
+            yield item
+        actual_node=self.first.successor
+        while actual_node!=self.first:
+            for item in actual_node.objects.values():
+                yield item
+            actual_node=actual_node.successor

@@ -87,7 +87,7 @@ class ListNode(RObject):
                     self.successor.remove(k-total_objecs)
         else:
             while k!=0 and len(self.objects)!=0:
-                self.objects.popleft()
+                self.objects.pop()
             
 
 

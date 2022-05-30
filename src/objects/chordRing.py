@@ -96,7 +96,10 @@ class ChordNode(RObject):
 
     def search(self,id)->RObject:
         node=self.find_successor(id)
-        return node.objects[id]
+        if id in node.objects:
+            return node.objects[id]
+        else:
+            return None
 
     def add(self, item:RObject):
         node=self.find_successor(item.id)

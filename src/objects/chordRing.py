@@ -10,8 +10,9 @@ class ChordNode(RObject):
         self.successor : ChordNode = None
         self.predecessor : ChordNode = None
         self._objects={}
+        self._predecessor_objects={}
         self._finger=[None for i in range(160)]
-        self._successors=[]
+        self.sucsuccessor : ChordNode = None
         self.next=-1
         self.partOf:ChordRing=None
 
@@ -26,6 +27,10 @@ class ChordNode(RObject):
     def objects(self):
         return self._objects
 
+    @property
+    def predecessor_objects(self):
+        return self._predecessor_objects
+
     def closest_preceding_node(self,id:int)->'ChordNode':
         if self.id > self.successor.id:
             return self.successor
@@ -35,6 +40,8 @@ class ChordNode(RObject):
         return self
 
     def find_successor(self,id:int)->'ChordNode':
+        #agregar la caida de un nodo durante este proceso
+
         if id > self.id and id <= self.successor.id:
             return self.successor
         elif self.id > self.successor.id and (id > self.id or id <= self.successor.id):
@@ -45,14 +52,21 @@ class ChordNode(RObject):
     
     def join(self,other)->None:
         self.predecessor=None
+        self.objects.clear()
         if isinstance(other,ChordNode):
             self.successor=other.find_successor(self.id)
         elif isinstance(other,ChordRing):
             self.successor=other.first.find_successor(self.id)
+        self.sucsuccessor=self.successor.successor
 
     def notify(self,other:'ChordNode')->None:
         if self.predecessor is None or other.id > self.predecessor.id and other.id <self.id:
             self.predecessor=other
+            for k in self.objects:
+                if k < other.id:
+                    other.objects[k]=self.objects[k]
+                    del self.objects[k]
+            self._predecessor_objects=other.objects.copy()
     
     def stabilize(self)->None:
         x=self.successor.predecessor
@@ -71,6 +85,13 @@ class ChordNode(RObject):
     n.check predecessor()
         if (predecessor has failed)
             predecessor = nil;
+            copiar todas las llaves de mi predecesor
+
+    n.check succesor()
+        if (successor has failed)
+            self.successor = self.sucsucessor
+            self.sucsuccessor=self.successor.successor
+            self.predecessor.sucsuccessor=self.successor
     '''
 
     def search(self,id)->RObject:
@@ -82,6 +103,7 @@ class ChordNode(RObject):
         if item.id not in node.objects:
             self.partOf.total_items+=1
         node.objects[item.id]=item
+        node.successor.predecessor_objects[item.id]=item
     
     def remove(self,id):
         node=self.find_successor(id)
@@ -98,6 +120,7 @@ class ChordRing(Collection):
         servers_list:List[ChordNode]=[]
         
         for server in servers:
+            #if server not has failed
             node=ChordNode(server)
             node.partOf=self
             servers_list.append(node)
@@ -115,6 +138,9 @@ class ChordRing(Collection):
 
         self.first.predecessor=self.last
         self.last.successor=self.first
+
+        for server in servers_sorted_list:
+            server.sucsuccessor=server.successor.successor
 
         q:Deque[Tuple[int,int]]=deque()
 

@@ -92,6 +92,8 @@ class ChordNode(RObject):
         
 
     def find_successor(self,key:int)->str:
+        if self.successor is None:
+            return self
         if key > self.key and key <= int(hashlib.sha1(self.successor.encode('utf8')).hexdigest(),base=16):
             return self.successor
         elif self.key > int(hashlib.sha1(self.successor.encode('utf8')).hexdigest(),base=16) and (key > self.key or key <= int(hashlib.sha1(self.successor.encode('utf8')).hexdigest(),base=16)):
@@ -101,34 +103,36 @@ class ChordNode(RObject):
             return aux.find_successor(key)
     
     def join(self, other:str)->None:
-        
+        print(other + " in join! ")
         self.predecessor=None
         self.objects.clear()
         self.predecessor_objects.clear()
 
         try:
-            with Pyro5.client.Proxy('Pyro:' + other) as other_node:
+            with Pyro5.client.Proxy('PYRO:' + other) as other_node:
                 self.successor = other_node.find_successor(self.key)
+                print(self.successor)
                 self.sucsuccessor=self.successor.successor
                 self.partOf=other_node.partOf
-        except:
-            print('Error join')
+        except Exception as e:
+            print(e)
+            print('Error join 1')
 
         if self.partOf is not None:
             try:
-                with Pyro5.client.Proxy('Pyro:' + self.partOf) as partOf:
+                with Pyro5.client.Proxy('PYRO:' + self.partOf) as partOf:
                     if self.key < int(hashlib.sha1(partOf.first.encode('utf8')).hexdigest(),base=16):
                         partOf.first=self.id
             except:
                 print('Error join')
 
-            
+        print(f"finish join! {self.successor}")
 
     def notify(self,other:str)->None:
         other_node = None
 
         try:
-            other_node = Pyro5.client.Proxy('Pyro:' + other)
+            other_node = Pyro5.client.Proxy('PYRO:' + other)
         except:
             print('Error notify other error')
         
@@ -145,7 +149,7 @@ class ChordNode(RObject):
     def stabilize(self)->None:
         
         try :
-            with Pyro5.client.Proxy('Pyro:'+self.successor) as successor:
+            with Pyro5.client.Proxy('PYRO:'+self.successor) as successor:
                 x=int(hashlib.sha1(successor.predecessor.encode('utf8')).hexdigest(),base=16)
                 if x > self.key and x  < successor.key:
                     self.successor=successor.predecessor
@@ -175,13 +179,13 @@ class ChordNode(RObject):
             self.successor=self.sucsuccessor
             
             try:
-                with Pyro5.client.Proxy('Pyro:'+self.successor) as successor:
+                with Pyro5.client.Proxy('PYRO:'+self.successor) as successor:
                     self.sucsuccessor=successor.successor
             except:
                 print('Error check_succesor succesor')
             
             try:
-                with Pyro5.client.Proxy('Pyro:'+self.predecessor) as predecessor:
+                with Pyro5.client.Proxy('PYRO:'+self.predecessor) as predecessor:
                     predecessor.sucsuccessor=self.successor
             except:
                 print('Error check_succesor predecessor')
@@ -191,7 +195,7 @@ class ChordNode(RObject):
         key=int(hashlib.sha1(id.encode('utf8')).hexdigest(),base=16)
         node=self.find_successor(key)
         try :
-            with Pyro5.client.Proxy('Pyro:'+node) as nd:
+            with Pyro5.client.Proxy('PYRO:'+node) as nd:
                 if key in nd.objects:
                     return node.objects[key]
                 else:
@@ -206,14 +210,14 @@ class ChordNode(RObject):
         registed = False
 
         try :
-            with Pyro5.client.Proxy('Pyro:'+node) as nd:
+            with Pyro5.client.Proxy('PYRO:'+node) as nd:
                 if key in nd.objects:
                     registed = True
                 
                 nd.objects[key]=item
 
                 try:
-                    with Pyro5.client.Proxy('Pyro:'+nd.successor) as successor:
+                    with Pyro5.client.Proxy('PYRO:'+nd.successor) as successor:
                         successor.predecessor_objects[key]=item
                 except:
                     print('Error add successor')
@@ -226,11 +230,11 @@ class ChordNode(RObject):
         key=int(hashlib.sha1(id.encode('utf8')).hexdigest(),base=16)
         node=self.find_successor(key)
         try :
-            with Pyro5.client.Proxy('Pyro:'+node) as nd:
+            with Pyro5.client.Proxy('PYRO:'+node) as nd:
                 del nd.objects[id]
 
                 try:
-                    with Pyro5.client.Proxy('Pyro:'+nd.successor) as successor:
+                    with Pyro5.client.Proxy('PYRO:'+nd.successor) as successor:
                         del successor.predecessor_objects[key]
                 except:
                     print('Error del successor')   
@@ -251,7 +255,7 @@ class ChordRing(Collection):
         
         for server in servers:
             try:
-                with Pyro5.client.Proxy('Pyro:'+'admin@'+server) as admin:
+                with Pyro5.client.Proxy('PYRO:'+'admin@'+server) as admin:
                     admin.addChordNode(id+'@'+server)
             except:
                 print('Error creando nodos en el servidor')
@@ -315,7 +319,7 @@ class ChordRing(Collection):
         
         for server in servers_sorted_list:
             try:
-                with Pyro5.client.Proxy('Pyro:'+server.id) as node:
+                with Pyro5.client.Proxy('PYRO:'+server.id) as node:
                     node.successor=server.successor.id
                     node.predecessor=server.predecessor.id
                     node.sucsuccessor=server.succesor.id
@@ -346,21 +350,21 @@ class ChordRing(Collection):
 
     def search(self,id):
         try:
-            with Pyro5.client.Proxy('Pyro:' + self.first) as node:
+            with Pyro5.client.Proxy('PYRO:' + self.first) as node:
                 return node.search(id)
         except:
             print('Error join')
 
     def add(self, item):
         try:
-            with Pyro5.client.Proxy('Pyro:' + self.first) as node:
+            with Pyro5.client.Proxy('PYRO:' + self.first) as node:
                 node.add(item)
         except:
             print('Error add')
         
     def remove(self,id):
         try:
-            with Pyro5.client.Proxy('Pyro:' + self.first) as node:
+            with Pyro5.client.Proxy('PYRO:' + self.first) as node:
                 node.add(id)
         except:
             print('Error remove')
@@ -369,7 +373,7 @@ class ChordRing(Collection):
     def items(self):
         actual_node=None
         try:
-            with Pyro5.client.Proxy('Pyro:' + self.first) as node:
+            with Pyro5.client.Proxy('PYRO:' + self.first) as node:
                 for item in node.objects.values():
                     yield item
                 actual_node=node.successor
@@ -378,7 +382,7 @@ class ChordRing(Collection):
 
         while actual_node != self.first:
             try:
-                with Pyro5.client.Proxy('Pyro:' + actual_node) as node:
+                with Pyro5.client.Proxy('PYRO:' + actual_node) as node:
                     for item in node.objects.values():
                         yield item
                     actual_node = node.successor

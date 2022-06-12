@@ -1,4 +1,4 @@
-from objects import RObject
+from RObjects import RObject
 from listCollection import ListCollection
 from typing import List
 from chordRing import ChordRing

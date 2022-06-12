@@ -1,6 +1,5 @@
 from abc import ABC,abstractmethod
 from datetime import datetime
-from actor import Actor
 from typing import List
 import Pyro5.server
 
@@ -26,7 +25,7 @@ class RObject(ABC):
 
 class ActivityObject(RObject,ABC):
     @abstractmethod
-    def __init__(self, id: str, type: str, attributedTo : Actor, published : datetime, to : List[str]) -> None:
+    def __init__(self, id: str, type: str, attributedTo , published : datetime, to : List[str]) -> None:
         super().__init__(id, type)
         self.attributedTo = attributedTo
         self.published = published

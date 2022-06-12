@@ -79,21 +79,21 @@ class ListNode(RObject):
 
         if list_type == 'inbox':
             try :
-                with Pyro5.client.Proxy('Pyro:'+'inboxes@'+server) as nd:
+                with Pyro5.client.Proxy('PYRO:'+'inboxes@'+server) as nd:
                     actual_list=nd.search(other)
             except:
                 print('Error join inbox')
 
         elif list_type == 'outbox':
             try :
-                with Pyro5.client.Proxy('Pyro:'+'outboxes@'+server) as nd:
+                with Pyro5.client.Proxy('PYRO:'+'outboxes@'+server) as nd:
                     actual_list=nd.search(other)
             except:
                 print('Error join outbox')
         
         else:
             try :
-                with Pyro5.client.Proxy('Pyro:'+'likeds@'+server) as nd:
+                with Pyro5.client.Proxy('PYRO:'+'likeds@'+server) as nd:
                     actual_list=nd.search(other)
             except:
                 print('Error join liked')
@@ -103,7 +103,7 @@ class ListNode(RObject):
         self.partof=other
         actual_list.last = self.id
         try :
-            with Pyro5.client.Proxy('Pyro:'+self.successor) as nd:
+            with Pyro5.client.Proxy('PYRO:'+self.successor) as nd:
                 self.top = nd.top
                 self.sucsuccessor = nd.succesor
         except:
@@ -120,21 +120,21 @@ class ListNode(RObject):
 
             if list_type == 'inbox':
                 try :
-                    with Pyro5.client.Proxy('Pyro:'+'inboxes@'+server) as nd:
+                    with Pyro5.client.Proxy('PYRO:'+'inboxes@'+server) as nd:
                         actual_list=nd.search(self.partOf)
                 except:
                     print('Error check_successor inbox')
 
             elif list_type == 'outbox':
                 try :
-                    with Pyro5.client.Proxy('Pyro:'+'outboxes@'+server) as nd:
+                    with Pyro5.client.Proxy('PYRO:'+'outboxes@'+server) as nd:
                         actual_list=nd.search(self.partOf)
                 except:
                     print('Error check_successor outbox')
             
             elif list_type == 'liked':
                 try :
-                    with Pyro5.client.Proxy('Pyro:'+'likeds@'+server) as nd:
+                    with Pyro5.client.Proxy('PYRO:'+'likeds@'+server) as nd:
                         actual_list=nd.search(self.partOf)
                 except:
                     print('Error check_successor liked')
@@ -142,7 +142,7 @@ class ListNode(RObject):
             try:
                 if self.successor == actual_list.first:
                     actual_list.first=self.sucsuccessor
-                with Pyro5.client.Proxy('Pyro:'+actual_list.last) as last:
+                with Pyro5.client.Proxy('PYRO:'+actual_list.last) as last:
                     if len(last.objects) == 0:
                         self.successor = last.id
                         last.successor=self.sucsuccessor
@@ -150,7 +150,7 @@ class ListNode(RObject):
                         last.predecessor=self.id
                         last.predecessor_objects=self.objects.copy()
                         try:
-                            with Pyro5.client.Proxy('Pyro:'+last.successor) as successor:
+                            with Pyro5.client.Proxy('PYRO:'+last.successor) as successor:
                                 last.objects = successor.predecessor_objects.copy()
                                 successor.predecessor=last.id
                                 last.sucsuccessor=successor.successor
@@ -162,7 +162,7 @@ class ListNode(RObject):
                 print('Error check_succesor last')
             
             try:
-                with Pyro5.client.Proxy('Pyro:'+self.predecessor) as predecessor:
+                with Pyro5.client.Proxy('PYRO:'+self.predecessor) as predecessor:
                     predecessor.sucsuccessor=self.successor
             except:
                 print('Error check_succesor predecessor')
@@ -170,7 +170,7 @@ class ListNode(RObject):
     def add(self, item:RObject):
         self.objects.appendleft(item)
         try:
-            with Pyro5.client.Proxy('Pyro:'+self.successor) as successor:
+            with Pyro5.client.Proxy('PYRO:'+self.successor) as successor:
                 successor.predecessor_objects.appendleft(item)
         except:
             print('Error add successor')
@@ -188,7 +188,7 @@ class ListCollection(Collection):
         
         for server in servers:
             try:
-                with Pyro5.client.Proxy('Pyro:'+'admin@'+server) as admin:
+                with Pyro5.client.Proxy('PYRO:'+'admin@'+server) as admin:
                     admin.listNode(id+'@'+server)
             except:
                 print('Error creando nodos en el servidor')
@@ -212,7 +212,7 @@ class ListCollection(Collection):
 
         for server in servers_list:
             try:
-                with Pyro5.client.Proxy('Pyro:'+server.id) as node:
+                with Pyro5.client.Proxy('PYRO:'+server.id) as node:
                     node.successor=server.successor.id
                     node.predecessor=server.predecessor.id
                     node.sucsuccessor=server.succesor.id
@@ -255,7 +255,7 @@ class ListCollection(Collection):
         actual_node = None
         losser_node = None
         try:
-            with Pyro5.client.Proxy('Pyro:'+self.first) as node:
+            with Pyro5.client.Proxy('PYRO:'+self.first) as node:
                 node.top=self.top
                 actual_node=node.successor
                 losser_node = node.successor
@@ -266,7 +266,7 @@ class ListCollection(Collection):
 
         while actual_node != self.first:
             try:
-                with Pyro5.client.Proxy('Pyro:'+actual_node) as node:
+                with Pyro5.client.Proxy('PYRO:'+actual_node) as node:
                     node.top*=2
                     actual_node=node.successor
             except:
@@ -276,7 +276,7 @@ class ListCollection(Collection):
 
         while losser_node != self.first:
             try:
-                actual_real_node = Pyro5.client.Proxy('Pyro:'+actual_node)
+                actual_real_node = Pyro5.client.Proxy('PYRO:'+actual_node)
                 losser_real_node = Pyro5.client.Proxy('Pyro'+losser_node)
             except:
                 print('Error allocating')
@@ -298,7 +298,7 @@ class ListCollection(Collection):
 
     def add(self, item):
         try:
-            with Pyro5.client.Proxy('Pyro:'+self.current) as current:
+            with Pyro5.client.Proxy('PYRO:'+self.current) as current:
                 if self.top <= len (current.objects):
                     if self.current != self.last:
                         self.current = current.id
@@ -315,7 +315,7 @@ class ListCollection(Collection):
     def items(self):
         actual_node=None
         try:
-            with Pyro5.client.Proxy('Pyro:' + self.first) as node:
+            with Pyro5.client.Proxy('PYRO:' + self.first) as node:
                 for item in node.objects:
                     yield item
                 actual_node=node.successor
@@ -324,7 +324,7 @@ class ListCollection(Collection):
 
         while actual_node != self.first:
             try:
-                with Pyro5.client.Proxy('Pyro:' + actual_node) as node:
+                with Pyro5.client.Proxy('PYRO:' + actual_node) as node:
                     for item in node.objects:
                         yield item
                     actual_node = node.successor

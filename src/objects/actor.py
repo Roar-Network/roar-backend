@@ -1,19 +1,42 @@
 from RObjects import RObject
-from listCollection import ListCollection
 from typing import List
-from chordRing import ChordRing
+import Pyro5.client
+import Pyro5.server
+import json
+from objects.listCollection import ListCollection
 
+@Pyro5.server.expose
 class Actor(RObject):
     def __init__(self, alias: str, user_name : str) -> None:
         super().__init__(alias, 'Actor')
-        self._inbox : ListCollection = ListCollection(self.id + "/" + "inbox",[])
-        self._outbox : ListCollection = ListCollection(self.id + "/" + "outbox",[])
-        self._outbox_set : ChordRing = ChordRing(self.id + "/" + "outbox_set",[])
-        self._following : ChordRing = ChordRing(self.id + "/" + "following",[])
-        self._followers : ChordRing = ChordRing(self.id + "/" + "followers",[])
-        self._liked : ChordRing = ChordRing(self.id + "/" + "followers",[])
+        self._inbox : str = f'{alias}/inbox'
+        self._outbox : str = f'{alias}/outbox'
+        self._following  = {}
+        self._followers = {}
+        self._liked : str = f'{alias}/liked'
         self._user_name : str = user_name
 
+        with json.load('servers.json') as servers:
+            connect_server = servers[0]
+            try:
+                with Pyro5.client.Proxy('PYRO:inboxes@'+connect_server+':8002') as node:
+                    node.add(ListCollection(f'{alias}/inbox',servers))
+            except:
+                print('Error creando inbox')
+
+            try:
+                with Pyro5.client.Proxy('PYRO:outboxes@'+connect_server+':8002') as node:
+                    node.add(ListCollection(f'{alias}/outbox',servers))
+            except:
+                print('Error creando outbox')
+
+            try:
+                with Pyro5.client.Proxy('PYRO:likeds@'+connect_server+':8002') as node:
+                    node.add(ListCollection(f'{alias}/liked',servers))
+            except:
+                print('Error creando liked')
+
+        
     @property
     def inbox(self):
         return self._inbox

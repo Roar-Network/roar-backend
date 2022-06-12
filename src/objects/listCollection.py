@@ -1,27 +1,24 @@
 from collections import deque
 from typing import List,Deque,Tuple
 from collection import Collection
-from objects import RObject
-import hashlib
+import Pyro5.server
+import Pyro5.client
+from RObjects import RObject
 
+@Pyro5.server.expose
 class ListNode(RObject):
     def __init__(self,id:str) -> None:
-        super().__init__(int(hashlib.sha1(id.encode('utf8')).hexdigest(),base=16),'ListNode')
-        self.successor : ListNode = None
-        self.predecessor : ListNode = None
-        self._objects=deque()
-        self._predecessor_objects=deque()
-        self.sucsuccessor : ListNode = None
-        self.partOf : ListCollection = None
-        self.top=0
-        self.predecessor_is_current = False
+        super().__init__(id,'ListNode')
+        self._successor : str = None
+        self._predecessor : str = None
+        self._objects = deque()
+        self._predecessor_objects = deque()
+        self._sucsuccessor : str = None
+        self._partOf : str = None
+        self._top = 0
 
     def __repr__(self) -> str:
         return 'ListNode ' + str(self.id)
-
-    @property
-    def finger(self):
-        return self._finger
 
     @property
     def objects(self):
@@ -30,55 +27,153 @@ class ListNode(RObject):
     @property
     def predecessor_objects(self):
         return self._predecessor_objects
-    
-    def join(self,other) -> None:
-        self.predecessor=None
+
+    @property
+    def successor(self):             
+        return self._successor
+
+    @successor.setter
+    def successor(self, value):    
+        self._successor = value
+
+    @property
+    def predecessor(self):             
+        return self._predecessor
+
+    @predecessor.setter
+    def predecessor(self, value):    
+        self._predecessor = value
+
+    @property
+    def sucsuccessor(self):             
+        return self._sucsuccessor
+
+    @sucsuccessor.setter
+    def sucsuccessor(self, value):    
+        self._sucsuccessor = value
+
+    @property
+    def partOf(self):             
+        return self._partOf
+
+    @partOf.setter
+    def partOf(self, value):    
+        self._partOf = value
+
+    @property
+    def top(self):             
+        return self._top
+
+    @top.setter
+    def top(self, value):    
+        self._top = value
+ 
+    def join(self,other:str) -> None:
+        self.predecessor = None
         self.objects.clear()
-        if isinstance(other,ListNode):
-            other=other.partOf
-        self.successor=other.first
-        self.predecessor=other.last
-        other.last=self
-        self.top=self.successor.top
-        self.sucsuccessor=self.successor.successor
+        self.predecessor_objects.clear()
+
+        list_type=other.split('/')[1]
+        server=self.id.split('@')[1]
+        actual_list = None
+
+        if list_type == 'inbox':
+            try :
+                with Pyro5.client.Proxy('Pyro:'+'inboxes@'+server) as nd:
+                    actual_list=nd.search(other)
+            except:
+                print('Error join inbox')
+
+        elif list_type == 'outbox':
+            try :
+                with Pyro5.client.Proxy('Pyro:'+'outboxes@'+server) as nd:
+                    actual_list=nd.search(other)
+            except:
+                print('Error join outbox')
+        
+        else:
+            try :
+                with Pyro5.client.Proxy('Pyro:'+'likeds@'+server) as nd:
+                    actual_list=nd.search(other)
+            except:
+                print('Error join liked')
+
+        self.successor=actual_list.first
+        self.predecessor=actual_list.last
+        self.partof=other
+        actual_list.last = self.id
+        try :
+            with Pyro5.client.Proxy('Pyro:'+self.successor) as nd:
+                self.top = nd.top
+                self.sucsuccessor = nd.succesor
+        except:
+            print('Error join succesor')
    
-    '''
-    Falta implementar
-    n.check predecessor()
-        if (predecessor has failed)
-            predecessor = nil;
+    def check_successor(self):
+        try:
+            Pyro5.client.Proxy(self.successor)._pyroRelease()
+        except:
 
-    n.check succesor()
-        if (successor has failed)
-            successor = sucsucessor
-            sucsuccessor=successor.successor
-            predecessor.sucsuccessor=successor
+            list_type=self.partOf.split('/')[1]
+            server=self.id.split('@')[1]
+            actual_list = None
 
-            aplicar la idea de poner el ultimo nodo para llenar el hueco
+            if list_type == 'inbox':
+                try :
+                    with Pyro5.client.Proxy('Pyro:'+'inboxes@'+server) as nd:
+                        actual_list=nd.search(self.partOf)
+                except:
+                    print('Error check_successor inbox')
 
-            si tiene elementos hacer crecer la lista
-    
-    hacerse cargo de los items del nodo caido
-
-    si el caido era el current ahora yo soy el current
-
-    '''
+            elif list_type == 'outbox':
+                try :
+                    with Pyro5.client.Proxy('Pyro:'+'outboxes@'+server) as nd:
+                        actual_list=nd.search(self.partOf)
+                except:
+                    print('Error check_successor outbox')
+            
+            elif list_type == 'liked':
+                try :
+                    with Pyro5.client.Proxy('Pyro:'+'likeds@'+server) as nd:
+                        actual_list=nd.search(self.partOf)
+                except:
+                    print('Error check_successor liked')
+            
+            try:
+                if self.successor == actual_list.first:
+                    actual_list.first=self.sucsuccessor
+                with Pyro5.client.Proxy('Pyro:'+actual_list.last) as last:
+                    if len(last.objects) == 0:
+                        self.successor = last.id
+                        last.successor=self.sucsuccessor
+                        actual_list.last=last.predecessor
+                        last.predecessor=self.id
+                        last.predecessor_objects=self.objects.copy()
+                        try:
+                            with Pyro5.client.Proxy('Pyro:'+last.successor) as successor:
+                                last.objects = successor.predecessor_objects.copy()
+                                successor.predecessor=last.id
+                                last.sucsuccessor=successor.successor
+                        except:
+                            print('Error check_succesor sucsuccesor')
+                    else:
+                        actual_list.allocate()
+            except:
+                print('Error check_succesor last')
+            
+            try:
+                with Pyro5.client.Proxy('Pyro:'+self.predecessor) as predecessor:
+                    predecessor.sucsuccessor=self.successor
+            except:
+                print('Error check_succesor predecessor')
 
     def add(self, item:RObject):
         self.objects.appendleft(item)
-        self.successor.predecessor_objects.appendleft(item)
-    
-    def remove(self,k:int):
-        total_objecs=len(self.objects)
-        if k>=total_objecs:
-            self.objects.clear()
-            if k>total_objecs:
-                if self != self.partOf.last:
-                    self.successor.remove(k-total_objecs)
-        else:
-            while k!=0 and len(self.objects)!=0:
-                self.objects.pop()
-            
+        try:
+            with Pyro5.client.Proxy('Pyro:'+self.successor) as successor:
+                successor.predecessor_objects.appendleft(item)
+        except:
+            print('Error add successor')
 
 
 class ListCollection(Collection):
@@ -87,14 +182,17 @@ class ListCollection(Collection):
         if len(servers)<3:
             raise Exception('Insuficient servers')
         self.current:ListNode=None
+        self._top=20
 
         servers_list:List[ListNode]=[]
         
         for server in servers:
-            #if server not has failed
+            try:
+                with Pyro5.client.Proxy('Pyro:'+'admin@'+server) as admin:
+                    admin.listNode(id+'@'+server)
+            except:
+                print('Error creando nodos en el servidor')
             node=ListNode(server)
-            node.partOf=self
-            node.top=20
             servers_list.append(node)
         
         self.first=servers_list[0]
@@ -112,46 +210,123 @@ class ListCollection(Collection):
         for server in servers_list:
             server.sucsuccessor=server.successor.successor
 
-    def alocate(self):
-        self.first.top=2*self.first.top
+        for server in servers_list:
+            try:
+                with Pyro5.client.Proxy('Pyro:'+server.id) as node:
+                    node.successor=server.successor.id
+                    node.predecessor=server.predecessor.id
+                    node.sucsuccessor=server.succesor.id
+                    node.top=self._top
+                    node.partOf=self.id
+            except:
+                print('Error asignando en la red')
 
+        self.first=servers_list[0].id
+        self.last=servers_list[-1].id
+        
         self.current=self.first
 
-        actual_node=self.first.successor
+    @property
+    def first(self):             
+        return self._first
+
+    @first.setter
+    def first(self, value):    
+        self._first = value
+
+    @property
+    def last(self):             
+        return self._last
+
+    @last.setter
+    def last(self, value):    
+        self._last = value
+
+    @property
+    def top(self):             
+        return self._top
+
+    @last.setter
+    def top(self, value):    
+        self._top = value
+
+    def allocate(self):
+        self.top*=2
+        actual_node = None
+        losser_node = None
+        try:
+            with Pyro5.client.Proxy('Pyro:'+self.first) as node:
+                node.top=self.top
+                actual_node=node.successor
+                losser_node = node.successor
+        except:
+            print('Error allocate first')
+
+        self.current = self.first
+
         while actual_node != self.first:
-            actual_node.top=2*actual_node.top
-            actual_node=actual_node.successor
+            try:
+                with Pyro5.client.Proxy('Pyro:'+actual_node) as node:
+                    node.top*=2
+                    actual_node=node.successor
+            except:
+                print('Error allocate node')
         
         actual_node=self.first
-        losser_node=actual_node.successor
 
-        while losser_node is not self.first:
-            while len(actual_node.objects)<actual_node.top and losser_node is not None:
-                if len(losser_node.objects)!=0:
-                    obj=losser_node.objects.popleft()
-                    actual_node.objects.append(obj)
+        while losser_node != self.first:
+            try:
+                actual_real_node = Pyro5.client.Proxy('Pyro:'+actual_node)
+                losser_real_node = Pyro5.client.Proxy('Pyro'+losser_node)
+            except:
+                print('Error allocating')
+            while len(actual_real_node.objects) < self.top:
+                if len(losser_real_node.objects)!=0:
+                    obj=losser_real_node.objects.popleft()
+                    actual_real_node.objects.append(obj)
                 else:
-                    losser_node=losser_node.successor
-            actual_node=actual_node.successor
+                    losser_node=losser_real_node.successor
+                    losser_real_node._pyroRelease()
+                    try:
+                        losser_real_node = Pyro5.client.Proxy('Pyro'+losser_node)
+                    except:
+                        print('Error allocating')
+            actual_node=actual_real_node.successor
+            actual_real_node._pyroRelease()
+            losser_real_node._pyroRelease()
             self.current=actual_node
 
     def add(self, item):
-        if self.current.top<=len(self.current.objects):
-            if self.current != self.last:
-                self.current=self.succesor
-            else:
-                self.alocate()         
-        self.current.add(item)
-    
-    def remove(self,k:int):
-        self.first.remove(k)
+        try:
+            with Pyro5.client.Proxy('Pyro:'+self.current) as current:
+                if self.top <= len (current.objects):
+                    if self.current != self.last:
+                        self.current = current.id
+                        self.add(item)
+                    else:
+                        self.allocate()
+                        self.add(item)
+                else:
+                    current.add(item)
+        except:
+            print('Error asignando en la red')
 
     @property
     def items(self):
-        for item in self.current.objects:
-            yield item
-        actual_node=self.current.predecessor
-        while actual_node != self.last:
-            for item in actual_node.objects:
-                yield item
-            actual_node=actual_node.predecessor
+        actual_node=None
+        try:
+            with Pyro5.client.Proxy('Pyro:' + self.first) as node:
+                for item in node.objects:
+                    yield item
+                actual_node=node.successor
+        except:
+            print('Error items')
+
+        while actual_node != self.first:
+            try:
+                with Pyro5.client.Proxy('Pyro:' + actual_node) as node:
+                    for item in node.objects:
+                        yield item
+                    actual_node = node.successor
+            except:
+                print('Error items')

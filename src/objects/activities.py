@@ -10,15 +10,17 @@ class Activity(RObject,ABC):
     def execute(self):
         ...
 
-class CreateActiity(Activity):
-    def __init__(self, id: str, actor: Actor, obj: ActivityObject, published: datetime, to: List[str]) -> None:
+class CreateActivity(Activity):
+    def __init__(self, id: str, actor: Actor, obj: ActivityObject, published: datetime, to: List[str], replay: "CreateActivity") -> None:
         super().__init__(id, 'CreateActivity')
         self.actor = actor
         self.obj = obj
         self.published = published
         self.to  = to
+        self.replay=replay
+        self.replies=[]
 
-class UpdateActiity(Activity):
+class UpdateActivity(Activity):
     def __init__(self, id: str, obj : ActivityObject, updates : Dict) -> None:
         super().__init__(id, 'UpdateActivity')
         self.obj=obj
@@ -47,9 +49,10 @@ class Remove(Activity):
         self.target=target
 
 class LikeActivity(Activity):
-    def __init__(self, id: str, obj: RObject) -> None:
+    def __init__(self, id: str,actor:Actor, obj: RObject) -> None:
         super().__init__(id, 'LikeActivity')
         self.obj=obj
+        self.actor=actor
 
 class BlockActivity(Activity):
     def __init__(self, id: str, actor: Actor) -> None:

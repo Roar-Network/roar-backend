@@ -1,4 +1,5 @@
 from collections import deque
+from copy import deepcopy
 from typing import Deque, List, Tuple
 from RObjects import RObject
 import hashlib
@@ -214,11 +215,11 @@ class ChordNode(RObject):
                 if key in nd.objects:
                     registed = True
                 
-                nd.objects[key]=item
+                nd.objects[key]=deepcopy(item)
 
                 try:
                     with Pyro5.client.Proxy('PYRO:'+nd.successor) as successor:
-                        successor.predecessor_objects[key]=item
+                        successor.predecessor_objects[key]=deepcopy(item)
                 except:
                     print('Error add successor')
         except:

@@ -3,11 +3,11 @@ from typing import List
 import Pyro5.client
 import Pyro5.server
 import json
-from objects.listCollection import ListCollection
+from listCollection import ListCollection
 
 @Pyro5.server.expose
 class Actor(RObject):
-    def __init__(self, alias: str, user_name : str) -> None:
+    def __init__(self, alias: str, user_name : str, hashed_password) -> None:
         super().__init__(alias, 'Actor')
         self._inbox : str = f'{alias}/inbox'
         self._outbox : str = f'{alias}/outbox'
@@ -15,6 +15,8 @@ class Actor(RObject):
         self._followers = {}
         self._liked : str = f'{alias}/liked'
         self._user_name : str = user_name
+        self._hashed_password : str = hashed_password
+        self._most_liked=[None]*10
 
         with json.load('servers.json') as servers:
             connect_server = servers[0]
@@ -60,3 +62,15 @@ class Actor(RObject):
     @property
     def user_name(self):
         return self._user_name
+
+    @property
+    def hashed_password(self):
+        return self._hashed_password
+
+    @hashed_password.setter
+    def hashed_password(self,value):
+        self._hashed_password = value
+
+    @property
+    def most_liked(self):
+        return self._most_liked

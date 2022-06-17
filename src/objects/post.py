@@ -10,11 +10,10 @@ class Post(RObject):
         self.published=datetime.now()
         self.likes={}
         
-    def like(self,alias:Actor):
+    def like(self,alias:str):
         self.likes[alias]=alias
         
-    def dis_like(self,alias:Actor):
-        self.liques.remove(alias)
+   
         
         
 

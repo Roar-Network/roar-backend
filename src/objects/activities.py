@@ -4,6 +4,7 @@ from collection import Collection
 from RObjects import RObject,ActivityObject
 from abc import ABC,abstractmethod
 from actor import Actor
+from post import Post
 
 class Activity(RObject,ABC):
     @abstractmethod
@@ -65,6 +66,7 @@ class UndoActivity(Activity):
         self.activity=activity
 
 class ShareActivity(Activity):
-    def __init__(self, id: str, obj: ActivityObject) -> None:
+    def __init__(self, id: str, obj: Post,act_cr:CreateActivity) -> None:
         super().__init__(id, 'ShareActiity')
         self.obj = obj        
+        self.act_cr=act_cr

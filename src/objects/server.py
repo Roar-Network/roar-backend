@@ -8,12 +8,13 @@ import threading
 
 IP = sck.gethostbyname(sck.gethostname())
 
-ACTORS: ChordNode = ChordNode(f"actors@{IP}:8001")
-INBOXES: ChordNode = ChordNode(f"inboxes@{IP}:8001")
-OUTBOXES: ChordNode = ChordNode(f"outboxes@{IP}:8001")
-LIKEDS: ChordNode = ChordNode(f"likeds@{IP}:8001")
+ACTORS: ChordNode = ChordNode(f"actors@{IP}:8002")
+INBOXES: ChordNode = ChordNode(f"inboxes@{IP}:8002")
+OUTBOXES: ChordNode = ChordNode(f"outboxes@{IP}:8002")
+LIKEDS: ChordNode = ChordNode(f"likeds@{IP}:8002")
+POSTS: ChordNode = ChordNode(f"likeds@{IP}:8002")
 
-daemon = server.Daemon("0.0.0.0", 8001)
+daemon = server.Daemon("0.0.0.0", 8002)
 
 @server.expose
 @server.behavior(instance_mode="single")

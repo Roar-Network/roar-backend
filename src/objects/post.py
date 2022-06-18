@@ -1,20 +1,32 @@
+from turtle import pu
 from RObjects import RObject
 from actor import Actor
-import datetime 
+from datetime import datetime
 
 class Post(RObject):
-    def __init__(self,id,author:Actor,content:str):
+    def __init__(self, id:str, author:Actor, content:str, replay:str, published: datetime):
         super().__init__(id,"Post")
-        self.author=author
-        self.content=content
-        self.published=datetime.now()
-        self.likes={}
-        
-    def like(self,alias:str):
-        self.likes[alias]=alias
-        
-   
-        
-        
+        self._author=author
+        self._content=content
+        self._published=published
+        self._replay = replay
+        self._likes={}
 
+    @property
+    def author(self):
+        return self._author
+
+    @property
+    def content(self):
+        return self._content
+
+    @property
+    def replay(self):
+        return self._replay
+
+    @property
+    def published(self):
+        return self._published
     
+    def like(self,alias:str):
+        self.l_ikes[alias]=alias    

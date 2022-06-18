@@ -20,7 +20,7 @@ class ChordNode(RObject):
         self._sucsuccessor : str = None
         self._next=-1
         self._partOf : str = None
-        self._stabilize_worker: Thread() = Thread(self.stabilize_worker)
+        self._stabilize_worker: Thread() = Thread(target=self.stabilize_worker)
         
         self._stabilize_worker.start()
     

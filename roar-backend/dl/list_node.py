@@ -19,7 +19,7 @@ class ListNode(RObject):
         self._sucsuccessor : str = None
         self._partOf : str = None
         self._top = 0
-        self._stabilize_worker: Thread() = Thread(self.stabilize_worker)
+        self._stabilize_worker: Thread() = Thread(target=self.stabilize_worker)
 
 
     def stabilize_worker(self):

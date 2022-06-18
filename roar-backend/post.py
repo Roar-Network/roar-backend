@@ -1,6 +1,5 @@
-from turtle import pu
-from RObjects import RObject
-from actor import Actor
+from .objects.robject import RObject
+from .actor import Actor
 from datetime import datetime
 
 class Post(RObject):

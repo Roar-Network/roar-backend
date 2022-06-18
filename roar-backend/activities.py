@@ -1,9 +1,7 @@
 from datetime import datetime
 from typing import Dict, List
-from .objects.collection import Collection
-from .objects.robject import RObject,ActivityObject
+from .objects.robject import RObject
 from abc import ABC,abstractmethod
-from .actor import Actor
 
 class Activity(RObject,ABC):
     @abstractmethod
@@ -34,6 +32,7 @@ class UnfollowActivity(Activity):
     def __init__(self, id: str, actor:str) -> None:
         super().__init__(id, 'UnfollowActivity')
         self.actor=actor
+
 
 class LikeActivity(Activity):
     def __init__(self, id: str, actor:str, obj: str) -> None:

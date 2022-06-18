@@ -1,10 +1,9 @@
 from .objects.robject import RObject
-from .dl.list_collection import ListCollection
-from .dht.chord_ring import ChordRing
 from typing import List
 import Pyro5.client
 import Pyro5.server
 import json
+from .dl.list_collection import ListCollection
 
 @Pyro5.server.expose
 class Actor(RObject):

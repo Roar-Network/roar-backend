@@ -5,7 +5,7 @@ import hashlib
 from ..objects.collection import Collection
 import Pyro5.server
 import Pyro5.client
-
+@Pyro5.server.expose
 class ChordRing(Collection):
     def __init__(self, id: str,servers:List[str]) -> None:
         super().__init__(id, 'ChordRing')

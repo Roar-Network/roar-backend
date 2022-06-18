@@ -14,6 +14,7 @@ ACTORS: ChordNode = ChordNode(f"actors@{IP}:8002")
 INBOXES: ChordNode = ChordNode(f"inboxes@{IP}:8002")
 OUTBOXES: ChordNode = ChordNode(f"outboxes@{IP}:8002")
 LIKEDS: ChordNode = ChordNode(f"likeds@{IP}:8002")
+POSTS: ChordNode = ChordNode(f"likeds@{IP}:8002")
 
 NETWORK: List = []
 
@@ -61,11 +62,13 @@ def check_all_rings():
     check_chord_rings(INBOXES)
     check_chord_rings(OUTBOXES)
     check_chord_rings(LIKEDS)
+    check_chord_rings(POSTS)
 
     print('actors=',ACTORS.successor)
     print('inboxes=',INBOXES.successor)
     print('outboxes=',OUTBOXES.successor)
     print('likeds=',LIKEDS.successor)
+    print('posts=',POSTS.successor)
 
 
 if __name__ == "__main__":
@@ -86,6 +89,7 @@ if __name__ == "__main__":
     daemon.register(INBOXES, "inboxes")
     daemon.register(OUTBOXES, "outboxes")
     daemon.register(LIKEDS, "likeds")
+    daemon.register(POSTS, "posts")
     threading.Thread(target=check_all_rings).start()
     daemon.requestLoop()
     

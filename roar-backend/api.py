@@ -2,9 +2,9 @@ from datetime import datetime, timedelta
 from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.middleware.cors import CORSMiddleware 
 import Pyro5.client
-from actor import Actor
-from activities import*
-from post import Post
+from .actor import Actor
+from .activities import *
+from .post import Post
 import json
 from typing import Union
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -12,7 +12,7 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel
 from actor import Actor
-from chordRing import ChordNode
+from .dht.chord_node import ChordNode
 
 
 

@@ -71,7 +71,6 @@ def check_all_rings():
     print('posts=',POSTS.successor)
 
 
-#if __name__ == "__main__":
 parser = argparse.ArgumentParser(description="Start backend server of Roar.")
 parser.add_argument('--ip', metavar='ip', type=str, nargs='+', default=[],
                 help='a string representing all the known IP')
@@ -92,4 +91,3 @@ daemon.register(LIKEDS, "likeds")
 daemon.register(POSTS, "posts")
 threading.Thread(target=check_all_rings).start()
 daemon.requestLoop()
-    

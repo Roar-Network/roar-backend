@@ -2,6 +2,9 @@ from ..objects.robject import RObject
 import hashlib
 import Pyro5.server
 import Pyro5.client
+from threading import Thread
+import schedule
+import time
 from copy import deepcopy
 
 @Pyro5.server.expose
@@ -17,6 +20,22 @@ class ChordNode(RObject):
         self._sucsuccessor : str = None
         self._next=-1
         self._partOf : str = None
+        self._stabilize_worker: Thread() = Thread(self.stabilize_worker)
+        
+        self._stabilize_worker.start()
+    
+
+    def stabilize_worker(self):
+        def sw():
+            self.check_successor()
+            self.check_predecessor()
+            self.stabilize()
+            self.fix_fingers()
+        schedule.every(1).minutes.do(sw)
+        while True:
+            schedule.run_pending()
+            time.sleep(1)
+
 
     def __repr__(self) -> str:
         return 'chordNode ' + str(self.id)
@@ -220,7 +239,7 @@ class ChordNode(RObject):
                 except:
                     print('Error add successor')
         except:
-            print('Error add')      
+            print('Error add')
        
         return registed
     

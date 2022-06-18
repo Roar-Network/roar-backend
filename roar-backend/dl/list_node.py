@@ -3,6 +3,10 @@ import Pyro5.client
 from collections import deque
 from typing import List, Deque, Tuple
 from ..objects.robject import RObject
+from threading import Thread
+import schedule
+import time
+
 
 @Pyro5.server.expose
 class ListNode(RObject):
@@ -15,6 +19,18 @@ class ListNode(RObject):
         self._sucsuccessor : str = None
         self._partOf : str = None
         self._top = 0
+        self._stabilize_worker: Thread() = Thread(self.stabilize_worker)
+
+
+    def stabilize_worker(self):
+        def sw():
+            self.check_successor()
+            self.check_predecessor()
+        schedule.every(1).minutes.do(sw)
+        while True:
+            schedule.run_pending()
+            time.sleep(1)
+
 
     def __repr__(self) -> str:
         return 'ListNode ' + str(self.id)

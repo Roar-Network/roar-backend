@@ -160,12 +160,34 @@ app.add_middleware(
 def home():
     return "Welcome to Retex API! To view an evaluation of the model navigate to /eval. To search on the model navigate to /search?q=<msg>. To view a document navigate to /collection?doc_id=<id>"
     
+@app.put("/forgot_password")
+def forgot_password(alias:str,a1:str,a2:str,password:str):
+    try:
+            with Pyro5.client.Proxy('PYRO:actors@172.28.5.1:8002') as node:
+                user=node.search(alias)
+                if user is None: raise HTTPException(status_code=404, detail=f"Username {alias} not found")
+                
+                _a1=get_password_hash(a1)
+                _a2=get_password_hash(a2)
+                _password=get_password_hash(password)
+                
+                if user.forgot_password(_password,_a1,_a2):
+                    return "success"
+                
+                else:
+                    raise HTTPException(detail=f"An error has occurred")
+                    
+                    
+                
+    except:
+        raise HTTPException(status_code=500,detail=f"The operation has faild")
+
 @app.put("/create_user")
-def create_user(username:str,alias:str,password:str):
+def create_user(username:str,alias:str,a1:str,a2:str,password:str):
     try:
         with Pyro5.client.Proxy('PYRO:actors@172.28.5.1:8002') as node:
             if node.search(alias) is None:
-                node.add(Actor(alias,username,get_password_hash(password)))
+                node.add(Actor(alias,username,get_password_hash(password),get_password_hash(a1),get_password_hash(a2)))
                 
             else: raise HTTPException(status_code=400, detail=f"User {alias} already exist")
   
@@ -173,7 +195,7 @@ def create_user(username:str,alias:str,password:str):
         raise HTTPException(status_code=500,detail=f"An error has occurred")
     return 'success'
        
-@app.post("/{current_user}/change_password")
+@app.post("/{alias}/change_password")
 async def change_password(password:str,current_user: Actor = Depends(get_current_user)):
     current_user.hashed_password=get_password_hash(password=password)
     return 'success'

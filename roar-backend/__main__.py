@@ -14,7 +14,7 @@ ACTORS: ChordNode = ChordNode(f"actors@{IP}:8002")
 INBOXES: ChordNode = ChordNode(f"inboxes@{IP}:8002")
 OUTBOXES: ChordNode = ChordNode(f"outboxes@{IP}:8002")
 LIKEDS: ChordNode = ChordNode(f"likeds@{IP}:8002")
-POSTS: ChordNode = ChordNode(f"likeds@{IP}:8002")
+POSTS: ChordNode = ChordNode(f"posts@{IP}:8002")
 
 NETWORK: List = []
 
@@ -78,7 +78,7 @@ parser.add_argument("--subnet", metavar="subnet", type=str, help="a string repre
 
 args = parser.parse_args()
 
-daemon = server.Daemon("0.0.0.0", 8001)
+daemon = server.Daemon("0.0.0.0", 8002)
 
 
 NETWORK = scan(args.subnet) + args.ip

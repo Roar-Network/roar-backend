@@ -17,6 +17,10 @@ class Actor(RObject):
         self._user_name : str = user_name
         self._hashed_password : str = hashed_password
         self._most_liked=[None]*10
+        self.following_soa=0
+        self.followers_soa=0
+        self.likes_soa=0
+        self.posts_soa=0
 
         with json.load('servers.json') as servers:
             connect_server = servers[0]

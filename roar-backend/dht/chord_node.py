@@ -1,10 +1,9 @@
-from collections import deque
-from typing import Deque, List, Tuple
 from ..objects.robject import RObject
 import hashlib
-from ..objects.collection import Collection
 import Pyro5.server
 import Pyro5.client
+from copy import deepcopy
+
 @Pyro5.server.expose
 class ChordNode(RObject):
     def __init__(self,id:str) -> None:

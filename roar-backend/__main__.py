@@ -71,25 +71,25 @@ def check_all_rings():
     print('posts=',POSTS.successor)
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Start backend server of Roar.")
-    parser.add_argument('--ip', metavar='ip', type=str, nargs='+', default=[],
-                    help='a string representing all the known IP')
-    parser.add_argument("--subnet", metavar="subnet", type=str, help="a string representing the subnet off the server")
-    
-    args = parser.parse_args()
+#if __name__ == "__main__":
+parser = argparse.ArgumentParser(description="Start backend server of Roar.")
+parser.add_argument('--ip', metavar='ip', type=str, nargs='+', default=[],
+                help='a string representing all the known IP')
+parser.add_argument("--subnet", metavar="subnet", type=str, help="a string representing the subnet off the server")
 
-    daemon = server.Daemon("0.0.0.0", 8001)
+args = parser.parse_args()
+
+daemon = server.Daemon("0.0.0.0", 8001)
 
 
-    NETWORK = scan(args.subnet) + args.ip
+NETWORK = scan(args.subnet) + args.ip
 
-    admin = ServerAdmin(daemon)
-    daemon.register(ACTORS, "actors")
-    daemon.register(INBOXES, "inboxes")
-    daemon.register(OUTBOXES, "outboxes")
-    daemon.register(LIKEDS, "likeds")
-    daemon.register(POSTS, "posts")
-    threading.Thread(target=check_all_rings).start()
-    daemon.requestLoop()
+admin = ServerAdmin(daemon)
+daemon.register(ACTORS, "actors")
+daemon.register(INBOXES, "inboxes")
+daemon.register(OUTBOXES, "outboxes")
+daemon.register(LIKEDS, "likeds")
+daemon.register(POSTS, "posts")
+threading.Thread(target=check_all_rings).start()
+daemon.requestLoop()
     

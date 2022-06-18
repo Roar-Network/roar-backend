@@ -16,11 +16,11 @@ class ChordNode(RObject):
         self._predecessor : str = None
         self._objects={}
         self._predecessor_objects={}
-        self._finger=[None for i in range(160)]
+        self._finger=[id for i in range(160)]
         self._sucsuccessor : str = None
         self._next=-1
         self._partOf : str = None
-        self._stabilize_worker: Thread() = Thread(self.stabilize_worker)
+        self._stabilize_worker: Thread() = Thread(target=self.stabilize_worker)
         
         self._stabilize_worker.start()
     
@@ -92,7 +92,7 @@ class ChordNode(RObject):
     def next(self):             
         return self._next
 
-    @partOf.setter
+    @next.setter
     def next(self, value):    
         self._next = value
 
@@ -110,7 +110,7 @@ class ChordNode(RObject):
 
     def find_successor(self,key:int)->str:
         if self.successor is None:
-            return self
+            return self.id
         if key > self.key and key <= int(hashlib.sha1(self.successor.encode('utf8')).hexdigest(),base=16):
             return self.successor
         elif self.key > int(hashlib.sha1(self.successor.encode('utf8')).hexdigest(),base=16) and (key > self.key or key <= int(hashlib.sha1(self.successor.encode('utf8')).hexdigest(),base=16)):
@@ -120,7 +120,6 @@ class ChordNode(RObject):
             return aux.find_successor(key)
     
     def join(self, other:str)->None:
-        print(other + " in join! ")
         self.predecessor=None
         self.objects.clear()
         self.predecessor_objects.clear()
@@ -128,12 +127,14 @@ class ChordNode(RObject):
         try:
             with Pyro5.client.Proxy('PYRO:' + other) as other_node:
                 self.successor = other_node.find_successor(self.key)
-                print(self.successor)
-                self.sucsuccessor=self.successor.successor
                 self.partOf=other_node.partOf
+            with Pyro5.client.Proxy('PYRO:' + self.successor) as successor:
+                self.sucsuccessor=successor.successor
         except Exception as e:
             print(e)
             print('Error join 1')
+
+        self.fix_fingers()
 
         if self.partOf is not None:
             try:
@@ -143,7 +144,6 @@ class ChordNode(RObject):
             except:
                 print('Error join')
 
-        print(f"finish join! {self.successor}")
 
     def notify(self,other:str)->None:
         other_node = None
@@ -175,6 +175,7 @@ class ChordNode(RObject):
             print('Error stabilize')
 
     def fix_fingers(self):
+        print(self.next)
         self.next+=1
         if self.next==160:
             self.next=0
@@ -182,7 +183,7 @@ class ChordNode(RObject):
 
     def check_predecessor(self):
         try:
-            Pyro5.client.Proxy(self.predecessor)._pyroRelease()
+            Pyro5.client.Proxy('PYRO:' + self.predecessor)._pyroRelease()
         except:
             self.predecessor = None
             for item in self.predecessor_objects:
@@ -190,7 +191,7 @@ class ChordNode(RObject):
 
     def check_successor(self):
         try:
-            Pyro5.client.Proxy(self.successor)._pyroRelease()
+            Pyro5.client.Proxy('PYRO:' + self.successor)._pyroRelease()
         except:
 
             self.successor=self.sucsuccessor

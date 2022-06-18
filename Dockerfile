@@ -6,8 +6,7 @@ ADD ./requirements.txt ./home
 RUN --mount=type=cache,target=/root/.cache \
     pip install -r ./home/requirements.txt
 
-EXPOSE 8001
+EXPOSE 8002
 
-RUN cd ./home/src/objects
 CMD ["sh"]
 

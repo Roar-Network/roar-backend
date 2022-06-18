@@ -31,6 +31,9 @@ class Cache():
 
     def __iter__(self) -> Iterable[Tuple[int, str]]:
         return [(k, v.value) for k, v in self._memory.items()]
+    
+    def is_in(self,key:str)-> bool:
+        return self._hash(key) in self._memory
 
     def add(self, key: str, value: Any) -> None:
         hash_obj = self._hash(key)

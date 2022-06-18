@@ -1,0 +1,8 @@
+doc/
+.github/
+.vscode/
+.gitignore
+.pep8speaks.yaml
+CONTRIBUTING.md
+Dockerfile
+__pycache__

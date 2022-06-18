@@ -176,10 +176,10 @@ async def change_password(password:str,current_user: Actor = Depends(get_current
     return 'success'
     
 @app.post("/{alias}/post") 
-async def create_post(post_dict:Dict,reply:str,current_user: Actor = Depends(get_current_user)):
+async def create_post(content:str,reply:str,current_user: Actor = Depends(get_current_user)):
     try:
         moment=datetime.now()
-        post = Post(current_user.id+str(moment),current_user.id, post_dict.get('content'), reply, moment)
+        post = Post(current_user.id+str(moment),current_user.id, content, reply, moment)
         ca = CreateActivity("Create"+post.id,post.author,post.id,post.published,current_user.followers,None)
 
         with Pyro5.client.Proxy('PYRO:posts@172.28.5.1:8002') as node:
@@ -272,26 +272,26 @@ async def get_likes(current_user: Actor = Depends(get_current_user)):
         raise HTTPException(status_code=500,detail=f"An error has occurred")
     return likes
    
-@app.put("/{alias}/{post}/like") 
-async def like(post_data:Dict, current_user: Actor = Depends(get_current_user)):
+@app.put("/{alias}/{post_id}/like") 
+async def like(post_id:str, current_user: Actor = Depends(get_current_user)):
     try:
 
-        ca=LikeActivity("Like",current_user,post_data.get('id'))
+        ca=LikeActivity("Like",current_user,post_id)
         with Pyro5.client.Proxy('PYRO:outboxes@172.28.5.1:8002') as node:
             node.search(current_user.outbox).add(ca)
             
         with Pyro5.client.Proxy('PYRO:posts@172.28.5.1:8002') as node:
-            p=node.search(post_data.get('id'))
+            p=node.search(post_id)
             p.like(current_user.id)
             
     except:
         raise HTTPException(status_code=500,detail=f"An error has occurred")
 
-@app.put("/{alias}/{post}/share_post") 
-async def share_post(post_dict:Dict,share_post:str,current_user: Actor = Depends(get_current_user)):
+@app.put("/{alias}/{post_id}/share_post") 
+async def share_post(content:str,share_post:str,current_user: Actor = Depends(get_current_user)):
     try:
         moment=datetime.now()
-        post = Post(current_user.id+str(moment),current_user.id, post_dict.get('content'), None, moment)
+        post = Post(current_user.id+str(moment),current_user.id, content, None, moment)
         with Pyro5.client.Proxy('PYRO:posts@172.28.5.1:8002') as node:
             node.add(post)
         
@@ -312,14 +312,13 @@ async def share_post(post_dict:Dict,share_post:str,current_user: Actor = Depends
     
     return 'success'
 
-@app.delete("/{alias}/{post}/delete_post")
+@app.delete("/{alias}/{post_id}/delete_post")
 async def delete_post(post_id:str,current_user: Actor = Depends(get_current_user)):
     try:
         with Pyro5.client.Proxy('PYRO:posts@172.28.5.1:8002') as node:
             post=node.search(post_id)
             if post.author == current_user.id:
-                #hacerle algo 
-                ...
+                node.remove(post.id) 
             else:
                 raise HTTPException(status_code=401,detail=f"Unauthorized")
 
@@ -330,6 +329,7 @@ async def delete_post(post_id:str,current_user: Actor = Depends(get_current_user
         raise HTTPException(status_code=500,detail=f"An error has occurred")
     return 'success'
 
+@app.delete("/{alias}/{user_id}/unfollow")
 async def unfollow(user_id,current_user: Actor = Depends(get_current_user)):
     del current_user.following[user_id]
     try:

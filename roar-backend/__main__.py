@@ -7,6 +7,7 @@ import scapy.all as scapy
 import threading
 import argparse
 from typing import List
+from .factory import FACTORY_PATH
 
 IP: str = sck.gethostbyname(sck.gethostname())
 
@@ -89,5 +90,7 @@ daemon.register(INBOXES, "inboxes")
 daemon.register(OUTBOXES, "outboxes")
 daemon.register(LIKEDS, "likeds")
 daemon.register(POSTS, "posts")
+for name in FACTORY_PATH:
+    daemon.register(FACTORY_PATH[name], name)
 threading.Thread(target=check_all_rings).start()
 daemon.requestLoop()

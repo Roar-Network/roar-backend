@@ -12,11 +12,15 @@ from .dht.chord_node import ChordNode
 from cache.cache import Cache,CacheItem
 from copy import deepcopy
 import numpy as np
-from numpy import array, zeros
+from numpy import array
 from random import randint, uniform
 from .classifier.text_classifier import TextClassifier
 import socket as sck
-
+from passlib.context import CryptContext
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from datetime import datetime, timedelta
 
 ##Matrix
 GRAPH = array([

@@ -2,11 +2,10 @@ from datetime import datetime
 from typing import Dict, List
 from .objects.robject import RObject
 from abc import ABC,abstractmethod
+import Pyro5.server
 
-class Activity(RObject,ABC):
-    @abstractmethod
-    def execute(self):
-        ...
+class Activity(RObject):
+    ...
 
 class CreateActivity(Activity):
     def __init__(self, id: str, actor: str, obj: str, published: datetime, to: List[str], replay: str) -> None:
@@ -23,6 +22,7 @@ class DeleteActivity(Activity):
         super().__init__(id, 'DeleteActivity')
         self.obj=obj
 
+@Pyro5.server.expose
 class FollowActivity(Activity):
     def __init__(self, id: str, actor:str) -> None:
         super().__init__(id, 'FollowActivity')

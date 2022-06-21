@@ -60,16 +60,3 @@ class Cache():
             self._sorted_by_date.__delitem__(0)
             del self._memory[removed]
 
-
-a = Cache(3)
-a.add("a", "Ariel")
-a.add("b", "Baby")
-a.add("c", "Car")
-a.get('c')
-a.get("a")
-a.get('b')
-a.get('a')
-a.get('b')
-print(a._memory)
-a.add("d", "Dani")
-print(a._memory)

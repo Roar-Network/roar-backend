@@ -1,3 +1,8 @@
-Pyro5==5.13.1
 scapy==2.4.5
 schedule==1.1.0
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+fastapi==0.78.0
+uvicorn==0.17.6
+Pyro5==5.13.1
+sortedcontainers==2.4.0

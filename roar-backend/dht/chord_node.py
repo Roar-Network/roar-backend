@@ -31,7 +31,7 @@ class ChordNode(RObject):
             self.check_predecessor()
             self.stabilize()
             self.fix_fingers()
-        schedule.every(1).minutes.do(sw)
+        schedule.every(20).seconds.do(sw)
         while True:
             schedule.run_pending()
             time.sleep(1)
@@ -116,8 +116,12 @@ class ChordNode(RObject):
         elif self.key > int(hashlib.sha1(self.successor.encode('utf8')).hexdigest(),base=16) and (key > self.key or key <= int(hashlib.sha1(self.successor.encode('utf8')).hexdigest(),base=16)):
             return self.successor
         else:
-            aux = self.closest_preceding_node(key)
-            return aux.find_successor(key)
+            aux_id = self.closest_preceding_node(key)
+            try:
+                with Pyro5.client.Proxy('PYRO:' + aux_id) as aux:
+                    return aux.find_successor(key)
+            except:
+                print('Error find successor')
     
     def join(self, other:str)->None:
         self.predecessor=None
@@ -129,6 +133,9 @@ class ChordNode(RObject):
                 self.successor = other_node.find_successor(self.key)
                 self.partOf=other_node.partOf
             with Pyro5.client.Proxy('PYRO:' + self.successor) as successor:
+                if successor.successor is None:
+                    successor.successor=self.id
+                    successor.sucsuccessor=successor.id
                 self.sucsuccessor=successor.successor
         except Exception as e:
             print(e)
@@ -153,7 +160,17 @@ class ChordNode(RObject):
         except:
             print('Error notify other error')
         
-        if self.predecessor is None or other_node.key > int(hashlib.sha1(self.predecessor.encode('utf8')).hexdigest(),base=16) and other_node.key < self.key:
+        # print('self_key=',self.key)
+        # print('other_node_key=', other_node.key)
+        # if self.predecessor is not None:
+        #     print('predecessor_key=', int(hashlib.sha1(self.predecessor.encode('utf8')).hexdigest(),base=16))
+        # else:
+        #     print('None')
+        
+        if self.predecessor is not None:
+            predecessor_key=int(hashlib.sha1(self.predecessor.encode('utf8')).hexdigest(),base=16)
+
+        if self.predecessor is None or (other_node.key > predecessor_key and (other_node.key < self.key or self.key < predecessor_key)):
             self.predecessor = other
             for k in self.objects:
                 if k < other_node.key:
@@ -164,15 +181,15 @@ class ChordNode(RObject):
         other_node._pyroRelease()
     
     def stabilize(self)->None:
-        
         try :
             with Pyro5.client.Proxy('PYRO:'+self.successor) as successor:
-                x=int(hashlib.sha1(successor.predecessor.encode('utf8')).hexdigest(),base=16)
-                if x > self.key and x  < successor.key:
-                    self.successor=successor.predecessor
+                if successor.predecessor is not None:
+                    x=int(hashlib.sha1(successor.predecessor.encode('utf8')).hexdigest(),base=16)
+                    if x > self.key and (x  < successor.key or self.key > successor.key):
+                        self.successor=successor.predecessor
                 successor.notify(self.id)
-        except:
-            print('Error stabilize')
+        except Exception as e:
+            print(e)
 
     def fix_fingers(self):
         print(self.next)
@@ -182,6 +199,7 @@ class ChordNode(RObject):
         self.finger[self.next]=self.find_successor(self.key + 2**self.next)
 
     def check_predecessor(self):
+        print('predecessor=',self.predecessor)
         try:
             Pyro5.client.Proxy('PYRO:' + self.predecessor)._pyroRelease()
         except:
@@ -190,23 +208,30 @@ class ChordNode(RObject):
                 self.objects[item]=self.predecessor_objects[item]
 
     def check_successor(self):
+        print('successor=',self.successor)
         try:
             Pyro5.client.Proxy('PYRO:' + self.successor)._pyroRelease()
         except:
 
-            self.successor=self.sucsuccessor
-            
-            try:
-                with Pyro5.client.Proxy('PYRO:'+self.successor) as successor:
-                    self.sucsuccessor=successor.successor
-            except:
-                print('Error check_succesor succesor')
-            
-            try:
-                with Pyro5.client.Proxy('PYRO:'+self.predecessor) as predecessor:
-                    predecessor.sucsuccessor=self.successor
-            except:
-                print('Error check_succesor predecessor')
+            if self.sucsuccessor == self.id:
+                self.successor=None
+                self.sucsuccessor=None
+
+            else:
+
+                self.successor=self.sucsuccessor
+                
+                try:
+                    with Pyro5.client.Proxy('PYRO:'+self.successor) as successor:
+                        self.sucsuccessor=successor.successor
+                except:
+                    print('Error check_succesor succesor')
+                
+                try:
+                    with Pyro5.client.Proxy('PYRO:'+self.predecessor) as predecessor:
+                        predecessor.sucsuccessor=self.successor
+                except:
+                    print('Error check_succesor predecessor')
 
 
     def search(self,id)->RObject:

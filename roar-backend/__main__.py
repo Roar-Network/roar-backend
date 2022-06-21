@@ -7,6 +7,8 @@ import scapy.all as scapy
 import threading
 import argparse
 from typing import List
+from .factory import FACTORY_PATH
+from .activities import FollowActivity
 
 IP: str = sck.gethostbyname(sck.gethostname())
 
@@ -65,10 +67,10 @@ def check_all_rings():
     check_chord_rings(POSTS)
 
     print('actors=',ACTORS.successor)
-    print('inboxes=',INBOXES.successor)
-    print('outboxes=',OUTBOXES.successor)
-    print('likeds=',LIKEDS.successor)
-    print('posts=',POSTS.successor)
+    # print('inboxes=',INBOXES.successor)
+    # print('outboxes=',OUTBOXES.successor)
+    # print('likeds=',LIKEDS.successor)
+    # print('posts=',POSTS.successor)
 
 
 parser = argparse.ArgumentParser(description="Start backend server of Roar.")
@@ -89,5 +91,8 @@ daemon.register(INBOXES, "inboxes")
 daemon.register(OUTBOXES, "outboxes")
 daemon.register(LIKEDS, "likeds")
 daemon.register(POSTS, "posts")
+daemon.register(FollowActivity)
+for name in FACTORY_PATH:
+    daemon.register(FACTORY_PATH[name], name)
 threading.Thread(target=check_all_rings).start()
 daemon.requestLoop()

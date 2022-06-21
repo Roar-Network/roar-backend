@@ -239,8 +239,8 @@ class ChordNode(RObject):
         node=self.find_successor(key)
         try :
             with Pyro5.client.Proxy('PYRO:'+node) as nd:
-                if key in nd.objects:
-                    return node.objects[key]
+                if id in nd.objects:
+                    return node.objects[id]
                 else:
                     return None
         except:
@@ -250,24 +250,22 @@ class ChordNode(RObject):
     def add(self, item:RObject):
         key=int(hashlib.sha1(item.id.encode('utf8')).hexdigest(),base=16)
         node=self.find_successor(key)
-        registed = False
 
         try :
             with Pyro5.client.Proxy('PYRO:'+node) as nd:
-                if key in nd.objects:
-                    registed = True
                 
-                nd.objects[key]=deepcopy(item)
+                nd.objects[id]=deepcopy(item)
 
                 try:
                     with Pyro5.client.Proxy('PYRO:'+nd.successor) as successor:
-                        successor.predecessor_objects[key]=deepcopy(item)
+                        successor.add_predecessor_objects(item)
                 except:
                     print('Error add successor')
         except:
             print('Error add')
-       
-        return registed
+
+    def add_predecessor_objects(self, item: RObject):
+        self.predecessor_objects[item.id]=deepcopy(item)
     
     def remove(self,id):
         key=int(hashlib.sha1(id.encode('utf8')).hexdigest(),base=16)
@@ -278,7 +276,7 @@ class ChordNode(RObject):
 
                 try:
                     with Pyro5.client.Proxy('PYRO:'+nd.successor) as successor:
-                        del successor.predecessor_objects[key]
+                        del successor.predecessor_objects[id]
                 except:
                     print('Error del successor')   
         except:

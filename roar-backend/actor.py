@@ -7,7 +7,7 @@ from .dl.list_collection import ListCollection
 
 @Pyro5.server.expose
 class Actor(RObject):
-    def __init__(self, alias: str, user_name : str, hashed_password) -> None:
+    def __init__(self, alias: str, user_name : str, hashed_password, a1:str, a2:str) -> None:
         super().__init__(alias, 'Actor')
         self._inbox : str = f'{alias}/inbox'
         self._outbox : str = f'{alias}/outbox'
@@ -21,6 +21,8 @@ class Actor(RObject):
         self.followers_soa=0
         self.likes_soa=0
         self.posts_soa=0
+        self.a1=a1
+        self.a2=a2
 
         with json.load('servers.json') as servers:
             connect_server = servers[0]
@@ -78,3 +80,13 @@ class Actor(RObject):
     @property
     def most_liked(self):
         return self._most_liked
+    
+    @property
+    def forgot_password(self,value,a1,a2):
+        if self.a1==a1 and self.a2==a2:
+            self._hashed_password=value
+            return True
+        
+        else:
+            return False
+            

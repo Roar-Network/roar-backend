@@ -10,6 +10,7 @@ class Post(RObject):
         self._published=published
         self._replay = replay
         self._likes={}
+        cat_label=-1
 
     @property
     def author(self):

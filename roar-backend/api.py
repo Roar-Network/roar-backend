@@ -9,12 +9,34 @@ from jose import JWTError, jwt
 from pydantic import BaseModel
 from .cache import Cache, CacheItem
 from .dht.chord_node import ChordNode
-from datetime import datetime, timedelta
-from passlib.context import CryptContext
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi import FastAPI, HTTPException, Depends, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from cache.cache import Cache,CacheItem
+from copy import deepcopy
+import numpy as np
+from numpy import array, zeros
+from random import randint, uniform
+from .classifier.text_classifier import TextClassifier
 import socket as sck
+
+
+##Matrix
+GRAPH = array([
+    [1.0, 0.3, 0.4, 0.6, 0.2, 0.3, 0.5, 0.6, 0.8, 0.9],
+    [0.1, 1.0, 0.2, 0.7, 0.8, 0.5, 0.7, 0.65, 0.5, 0.8],
+    [0.78, 0.1, 1.0, 0.6, 0.2, 0.5, 0.2, 0.7, 0.65, 0.79],
+    [0.6, 0.4, 0.2, 1.0, 0.2, 0.45, 0.3, 0.5, 0.8, 0.7],
+    [0.18, 0.86, 0.4, 0.3, 1.0, 0.67, 0.56, 0.7, 0.4, 0.69],
+    [0.2, 0.3, 0.6, 0.2, 0.1, 1.0, 0.5, 0.7, 0.3, 0.4],
+    [0.7, 0.6, 0.3, 0.5, 0.6, 0.58, 1.0, 0.62, 0.48, 0.53],
+    [0.8, 0.1, 0.2, 0.1, 0.8, 0.82, 0.458, 1.0, 0.23, 0.38],
+    [0.6, 0.1, 0.7, 0.75, 0.4, 0.5, 0.64, 0.58, 1.0, 0.4],
+    [0.9, 0.2, 0.4, 0.6, 0.3, 0.2, 0.86, 0.42, 0.21, 1.0]
+])
+##
+
+##Classifier
+CLASSIFIER=TextClassifier()
+##
+
 
 # to get a string like this run:
 # openssl rand -hex 32
@@ -178,11 +200,10 @@ async def change_password(password: str, current_user: Actor = Depends(get_curre
 @app.post("/{alias}/post")
 async def create_post(content: str, reply: str, current_user: Actor = Depends(get_current_user)):
     try:
-        moment = datetime.now()
-        post = Post(current_user.id+str(moment),
-                    current_user.id, content, reply, moment)
-        ca = CreateActivity("Create"+post.id, post.author,
-                            post.id, post.published, current_user.followers, None)
+        moment=datetime.now()
+        post = Post(current_user.id+str(moment),current_user.id, content, reply, moment)
+        post.cat_label=CLASSIFIER.predict(content)
+        ca = CreateActivity("Create"+post.id,post.author,post.id,post.published,current_user.followers,None)
 
         with Pyro5.client.Proxy('PYRO:posts@{IP}:8002') as node:
             node.add(post)
@@ -440,9 +461,27 @@ async def unfollow(user_id, current_user: Actor = Depends(get_current_user)):
                 raise HTTPException(
                     status_code=500, detail=f"An error has occurred")
     except:
-        raise HTTPException(status_code=500, detail=f"An error has occurred")
+        raise HTTPException(status_code=500,detail=f"An error has occurred")
+    
+        
+    return 'success'   
 
-    return 'success'
-
-if __name__ == "__main__":
-    uvicorn.run("__main__:app", host="0.0.0.0", port=32020, reload=True)
+@app.post("/{alias}/preferences")
+async def set_preferences(preferences:list,current_user: Actor = Depends(get_current_user)):
+    pref=[0 for i in range(10)]
+    if len(preferences)>0:
+        pref[preferences[0]]=uniform(0.8,1)
+    
+    if len(preferences)>1:
+        pref[preferences[1]]=uniform(0.6,0.8)
+        
+    if len(preferences)>2:
+        pref[preferences[2]]=uniform(0.5,0.6)
+        
+    if len(preferences)>3:
+        pref[preferences[3]]=uniform(0.45,0.5)
+        
+    pref=array(pref)
+    u_pref=np.dot(pref,GRAPH)
+    current_user.preferences=u_pref
+    return 'succes'

@@ -3,7 +3,7 @@ from .actor import Actor
 from datetime import datetime
 
 class Post(RObject):
-    def __init__(self, id:str, author:Actor, content:str, replay:str, published: datetime):
+    def __init__(self, id:str, author:str, content:str, replay:str, published: datetime):
         super().__init__(id,"Post")
         self._author=author
         self._content=content

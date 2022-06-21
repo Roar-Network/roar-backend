@@ -16,11 +16,13 @@ from .dht.chord_node import ChordNode
 from cache.cache import Cache,CacheItem
 from copy import deepcopy
 import numpy as np
-from np import array, zeros
+from numpy import array, zeros
 from random import randint, uniform
+from .classifier.text_classifier import TextClassifier
+
 
 ##Matrix
-graph = array([
+GRAPH = array([
     [1.0, 0.3, 0.4, 0.6, 0.2, 0.3, 0.5, 0.6, 0.8, 0.9],
     [0.1, 1.0, 0.2, 0.7, 0.8, 0.5, 0.7, 0.65, 0.5, 0.8],
     [0.78, 0.1, 1.0, 0.6, 0.2, 0.5, 0.2, 0.7, 0.65, 0.79],
@@ -34,8 +36,8 @@ graph = array([
 ])
 ##
 
-##FastText
-
+##Classifier
+CLASSIFIER=TextClassifier()
 ##
 
 
@@ -226,7 +228,7 @@ async def create_post(content:str,reply:str,current_user: Actor = Depends(get_cu
     try:
         moment=datetime.now()
         post = Post(current_user.id+str(moment),current_user.id, content, reply, moment)
-        post.cat_label=0
+        post.cat_label=CLASSIFIER.predict(content)
         ca = CreateActivity("Create"+post.id,post.author,post.id,post.published,current_user.followers,None)
 
         with Pyro5.client.Proxy('PYRO:posts@172.28.5.1:8002') as node:

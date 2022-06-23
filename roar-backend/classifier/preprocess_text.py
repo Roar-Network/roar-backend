@@ -1,5 +1,5 @@
 from string import punctuation
-from contraction import fix
+from contractions import fix
 import nltk as text
 
 

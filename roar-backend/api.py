@@ -9,7 +9,7 @@ from jose import JWTError, jwt
 from pydantic import BaseModel
 from .cache import Cache, CacheItem
 from .dht.chord_node import ChordNode
-from cache.cache import Cache,CacheItem
+from .cache.cache import Cache,CacheItem
 from copy import deepcopy
 import numpy as np
 from numpy import array

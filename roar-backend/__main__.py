@@ -2,13 +2,17 @@ import Pyro5.server as server
 import Pyro5.client as client
 from .dht.chord_node import ChordNode
 from .dl.list_node import ListNode
+from .dl.list_collection import ListCollection
 import socket as sck
 import scapy.all as scapy
 import threading
 import argparse
 from typing import List
-from .factory import FACTORY_PATH
-from .activities import FollowActivity
+from .activities import *
+from .api import app
+import uvicorn
+from .actor import Actor
+
 
 IP: str = sck.gethostbyname(sck.gethostname())
 
@@ -91,8 +95,14 @@ daemon.register(INBOXES, "inboxes")
 daemon.register(OUTBOXES, "outboxes")
 daemon.register(LIKEDS, "likeds")
 daemon.register(POSTS, "posts")
+daemon.register(CreateActivity)
 daemon.register(FollowActivity)
-for name in FACTORY_PATH:
-    daemon.register(FACTORY_PATH[name], name)
+daemon.register(LikeActivity)
+daemon.register(ShareActivity)
+daemon.register(DeleteActivity)
+daemon.register(UnfollowActivity)
+daemon.register(Actor)
+daemon.register(ListCollection)
 threading.Thread(target=check_all_rings).start()
+uvicorn.run(app, host="0.0.0.0", port=32020)
 daemon.requestLoop()

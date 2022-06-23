@@ -23,6 +23,7 @@ class Actor(RObject):
         self.posts_soa=0
         self.a1=a1
         self.a2=a2
+        self.preferences=[]
 
         with json.load('servers.json') as servers:
             connect_server = servers[0]

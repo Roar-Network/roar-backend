@@ -4,7 +4,10 @@ from collections import deque
 from typing import List, Deque, Tuple
 from ..objects.robject import RObject
 from ..objects.collection import Collection
+from .list_node import ListNode
+import Pyro5.server
 
+@Pyro5.server.expose
 class ListCollection(Collection):
     def __init__(self, id: str,servers:List[str]) -> None:
         super().__init__(id, "ListCollection")

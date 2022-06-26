@@ -25,6 +25,8 @@ class Actor(RObject):
         self.a2=a2
         self.preferences=[]
         self.info={}
+        self.info["alias"]=alias
+        self.info["user_name"]=user_name
         self.info["followers"]=0
         self.info["following"]=0
         self.info["posts"]=0

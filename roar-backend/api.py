@@ -526,5 +526,5 @@ async def unlike(post_id: str, current_user: Actor = Depends(get_current_user)):
     
     
 @app.get("/{alias}/info")
-async def get_following(current_user: Actor = Depends(get_current_user)):
+async def get_info(current_user: Actor = Depends(get_current_user)):
     return current_user.info

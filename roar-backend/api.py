@@ -206,7 +206,7 @@ async def create_post(content: str, reply: str, current_user: Actor = Depends(ge
     try:
         moment=datetime.now()
         post = Post(current_user.id+str(moment),current_user.id, content, reply, moment)
-        post.cat_label=CLASSIFIER.predict(content)
+        
         ca = CreateActivity("Create"+post.id,post.author,post.id,post.published,current_user.followers,None)
 
         with Pyro5.client.Proxy('PYRO:posts@{IP}:8002') as node:
@@ -216,6 +216,10 @@ async def create_post(content: str, reply: str, current_user: Actor = Depends(ge
             node.search(current_user.outbox).add(ca)
 
         current_user.posts_soa += 1
+        
+        if reply is None:
+            post.cat_label=CLASSIFIER.predict(content)
+            
 
         try:
             with Pyro5.client.Proxy('PYRO:actors@{IP}:8002') as node:
@@ -371,6 +375,9 @@ async def like(post_id: str, current_user: Actor = Depends(get_current_user)):
 
     except:
         raise HTTPException(status_code=500, detail=f"An error has occurred")
+    
+    current_user.info["likes"]+=1
+    return 'success'
 
 
 @app.put("/{alias}/{post_id}/share_post")
@@ -401,6 +408,7 @@ async def share_post(content: str, share_post: str, current_user: Actor = Depend
     except:
         raise HTTPException(status_code=500, detail=f"An error has occurred")
 
+    current_user.imfo["shared"]+=1
     return 'success'
 
 
@@ -420,6 +428,7 @@ async def delete_post(post_id: str, current_user: Actor = Depends(get_current_us
             node.add(ra)
     except:
         raise HTTPException(status_code=500, detail=f"An error has occurred")
+    current_user.info["posts"]-=1
     return 'success'
 
 
@@ -427,6 +436,7 @@ async def delete_post(post_id: str, current_user: Actor = Depends(get_current_us
 async def follow(user_id, current_user: Actor = Depends(get_current_user)):
     current_user.followin[user_id] = user_id
     current_user.followin_soa += 1
+    current_user.info["following"]+=1
     try:
         with Pyro5.client.Proxy('PYRO:actors@{IP}:8002') as node:
             user = node.search(user_id)
@@ -437,6 +447,7 @@ async def follow(user_id, current_user: Actor = Depends(get_current_user)):
                     FollowActivity('Follow'+user_id, user_id))
                 user.followers[current_user.id] = current_user.id
                 user.followers_sao += 1
+                user.omfo["followers"]+=1
         except:
             raise HTTPException(
                 status_code=500, detail=f"An error has occurred")
@@ -451,11 +462,13 @@ async def follow(user_id, current_user: Actor = Depends(get_current_user)):
 async def unfollow(user_id, current_user: Actor = Depends(get_current_user)):
     del current_user.following[user_id]
     current_user.followin_soa += 1
+    current_user.info["following"]-=1
     try:
         with Pyro5.client.Proxy('PYRO:actors@{IP}:8002') as node:
             user = node.search(user_id)
             del user.followers[current_user.id]
             user.followers_soa += 1
+            user.info["followers"]-=1
 
             try:
                 with Pyro5.client.Proxy('PYRO:outboxes@{IP}:8002') as fol:
@@ -489,3 +502,29 @@ async def set_preferences(preferences:list,current_user: Actor = Depends(get_cur
     u_pref=np.dot(pref,GRAPH)
     current_user.preferences=u_pref
     return 'succes'
+
+
+@app.put("/{alias}/{post_id}/unlike")
+async def unlike(post_id: str, current_user: Actor = Depends(get_current_user)):
+    try:
+        with Pyro5.client.Proxy('PYRO:outboxes@{IP}:8002') as node:
+            for i in node.items:
+                if i.type == "LikeActivity" and i.id==post_id:
+                    node.remove(i)
+                    break
+            
+
+        with Pyro5.client.Proxy('PYRO:posts@{IP}:8002') as node:
+            p=node.search(post_id)
+            p.unlike(current_user.id)
+
+        current_user.posts_soa += 1
+        current_user.info["likes"]-=1
+
+    except:
+        raise HTTPException(status_code=500, detail=f"An error has occurred")
+    
+    
+@app.get("/{alias}/info")
+async def get_following(current_user: Actor = Depends(get_current_user)):
+    return current_user.info

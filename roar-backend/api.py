@@ -220,7 +220,15 @@ async def create_post(content: str, reply: str, current_user: Actor = Depends(ge
         if reply is None:
             post.cat_label=CLASSIFIER.predict(content)
             
-
+        else:
+            try:
+                with Pyro5.client.Proxy('PYRO:posts@{IP}:8002') as node:
+                    rp = node.search(reply)
+                    rp._replies.append(post)
+                
+            except:
+                raise HTTPException(
+                        status_code=500, detail=f"An error has occurred")
         try:
             with Pyro5.client.Proxy('PYRO:actors@{IP}:8002') as node:
                 try:
@@ -404,6 +412,15 @@ async def share_post(content: str, share_post: str, current_user: Actor = Depend
                 except:
                     raise HTTPException(
                         status_code=500, detail=f"An error has occurred")
+                    
+            try:
+                with Pyro5.client.Proxy('PYRO:posts@{IP}:8002') as node:
+                    sp = node.search(share_post)
+                    sp._shared.append(current_user.id)
+                
+            except:
+                raise HTTPException(
+                        status_code=500, detail=f"An error has occurred")
 
     except:
         raise HTTPException(status_code=500, detail=f"An error has occurred")
@@ -528,3 +545,41 @@ async def unlike(post_id: str, current_user: Actor = Depends(get_current_user)):
 @app.get("/{alias}/info")
 async def get_info(current_user: Actor = Depends(get_current_user)):
     return current_user.info
+
+@app.get("/{post}/get_shared_by")
+async def get_info(post_id:str):
+    try:
+        with Pyro5.client.Proxy('PYRO:posts@{IP}:8002') as node:
+            sp = node.search(share_post)
+            return sp._shared
+            
+        
+    except:
+        raise HTTPException(
+                status_code=500, detail=f"An error has occurred")
+        
+@app.get("/{post}/get_likes")
+async def get_info(post_id:str):
+    try:
+        with Pyro5.client.Proxy('PYRO:posts@{IP}:8002') as node:
+            sp = node.search(share_post)
+            return sp._likes
+            
+        
+    except:
+        raise HTTPException(
+                status_code=500, detail=f"An error has occurred")
+        
+@app.get("/{post}/get_replies")
+async def get_info(post_id:str):
+    try:
+        with Pyro5.client.Proxy('PYRO:posts@{IP}:8002') as node:
+            sp = node.search(share_post)
+            return sp._replies
+            
+        
+    except:
+        raise HTTPException(
+                status_code=500, detail=f"An error has occurred")
+
+     

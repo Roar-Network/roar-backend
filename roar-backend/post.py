@@ -10,6 +10,8 @@ class Post(RObject):
         self._published=published
         self._reply = reply
         self._likes={}
+        self._shared=[]
+        self._replies=[]
         self.info={}
         self.info["likes"]=0
         self.info["shares"]=0
@@ -33,11 +35,11 @@ class Post(RObject):
         return self._published
     
     def like(self,alias:str):
-        self.l_ikes[alias]=alias    
+        self._likes[alias]=alias    
         self.likes+=1
         
     def unlike(self,alias:str):
-        self.l.remove(alias)
+        self._likes.remove(alias)
         self.likes-=1
         
     

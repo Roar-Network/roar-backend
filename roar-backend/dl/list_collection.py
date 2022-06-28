@@ -12,7 +12,7 @@ class ListCollection(Collection):
         super().__init__(id, "ListCollection")
         if len(servers)==0:
             raise Exception('Insuficient servers')
-        self.current:ListNode=None
+        self._current=None
         self._top=32
 
         servers_list:List[ListNode]=[]
@@ -26,8 +26,8 @@ class ListCollection(Collection):
             node=ListNode(id+'@'+server)
             servers_list.append(node)
         
-        self.first=servers_list[0]
-        self.last=servers_list[-1]
+        self._first=servers_list[0]
+        self._last=servers_list[-1]
 
         for i in range(len(servers_list)-1):
             servers_list[i].successor=servers_list[i+1]
@@ -35,8 +35,8 @@ class ListCollection(Collection):
         for i in range(1,len(servers_list)):
             servers_list[i].predecessor=servers_list[i-1]
 
-        self.first.predecessor=self.last
-        self.last.successor=self.first
+        self._first.predecessor=self._last
+        self._last.successor=self._first
 
         for server in servers_list:
             server.sucsuccessor=server.successor.successor
@@ -52,10 +52,10 @@ class ListCollection(Collection):
             except:
                 print('Error asignando en la red')
 
-        self.first=servers_list[0].id
-        self.last=servers_list[-1].id
+        self._first=servers_list[0].id
+        self._last=servers_list[-1].id
         
-        self.current=self.first
+        self._current=self._first
 
     @property
     def first(self):             
@@ -77,7 +77,7 @@ class ListCollection(Collection):
     def top(self):             
         return self._top
 
-    @last.setter
+    @top.setter
     def top(self, value):    
         self._top = value
 

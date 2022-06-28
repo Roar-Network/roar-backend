@@ -29,4 +29,4 @@ class Post(RObject):
         return self._published
     
     def like(self,alias:str):
-        self.l_ikes[alias]=alias    
+        self._likes[alias]=alias    

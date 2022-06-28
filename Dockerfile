@@ -1,13 +1,12 @@
-FROM python:3.10
+FROM roar/server
 
-ADD . ./home
-ADD ./requirements.txt ./home
+WORKDIR /roar-backend
 
-RUN python -m pip install --upgrade pip
-RUN pip install -r ./home/requirements.txt
+ADD . ./
+
 
 EXPOSE 32020
 EXPOSE 8002
 
-CMD ["sh"]
+CMD ["bash"]
 

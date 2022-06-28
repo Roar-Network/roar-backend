@@ -1,20 +1,19 @@
 import Pyro5.server
 import Pyro5.client
-from collections import deque
-from typing import List, Deque, Tuple
-from ..objects.robject import RObject
+from typing import List
 from ..objects.collection import Collection
 from .list_node import ListNode
 import Pyro5.server
+import time
 
 @Pyro5.server.expose
 class ListCollection(Collection):
     def __init__(self, id: str,servers:List[str]) -> None:
         super().__init__(id, "ListCollection")
-        if len(servers)<3:
+        if len(servers)==0:
             raise Exception('Insuficient servers')
         self.current:ListNode=None
-        self._top=20
+        self._top=32
 
         servers_list:List[ListNode]=[]
         
@@ -93,6 +92,9 @@ class ListCollection(Collection):
                 losser_node = node.successor
         except:
             print('Error allocate first')
+            time.sleep(1)
+            self.allocate()
+            return
 
         self.current = self.first
 
@@ -103,15 +105,23 @@ class ListCollection(Collection):
                     actual_node=node.successor
             except:
                 print('Error allocate node')
+                time.sleep(1)
+                self.allocate()
+                return
         
         actual_node=self.first
 
         while losser_node != self.first:
             try:
                 actual_real_node = Pyro5.client.Proxy('PYRO:'+actual_node)
-                losser_real_node = Pyro5.client.Proxy('Pyro'+losser_node)
+                actual_real_node.id
+                losser_real_node = Pyro5.client.Proxy('PYRO:'+losser_node)
+                losser_real_node.id
             except:
                 print('Error allocating')
+                time.sleep(1)
+                self.allocate()
+                return
             while len(actual_real_node.objects) < self.top:
                 if len(losser_real_node.objects)!=0:
                     obj=losser_real_node.objects.popleft()
@@ -121,8 +131,12 @@ class ListCollection(Collection):
                     losser_real_node._pyroRelease()
                     try:
                         losser_real_node = Pyro5.client.Proxy('Pyro'+losser_node)
+                        losser_real_node.id
                     except:
                         print('Error allocating')
+                        time.sleep(1)
+                        self.allocate()
+                        return
             actual_node=actual_real_node.successor
             actual_real_node._pyroRelease()
             losser_real_node._pyroRelease()

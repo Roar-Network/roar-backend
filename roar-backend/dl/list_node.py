@@ -1,3 +1,4 @@
+from copy import deepcopy
 import Pyro5.server
 import Pyro5.client
 from collections import deque
@@ -12,24 +13,20 @@ import time
 class ListNode(RObject):
     def __init__(self,id:str) -> None:
         super().__init__(id,'ListNode')
-        self._successor : str = None
-        self._predecessor : str = None
+        self._successor : str = id
+        self._predecessor : str = id
         self._objects = deque()
         self._predecessor_objects = deque()
-        self._sucsuccessor : str = None
+        self._sucsuccessor : str = id
         self._partOf : str = None
         self._top = 0
         self._stabilize_worker: Thread() = Thread(target=self.stabilize_worker)
 
 
     def stabilize_worker(self):
-        def sw():
-            self.check_successor()
-            self.check_predecessor()
-        schedule.every(1).minutes.do(sw)
+        schedule.every(0.05).seconds.do(self.check_successor)
         while True:
             schedule.run_pending()
-            time.sleep(1)
 
 
     def __repr__(self) -> str:
@@ -84,7 +81,6 @@ class ListNode(RObject):
         self._top = value
  
     def join(self,other:str) -> None:
-        self.predecessor = None
         self.objects.clear()
         self.predecessor_objects.clear()
 
@@ -126,7 +122,8 @@ class ListNode(RObject):
    
     def check_successor(self):
         try:
-            Pyro5.client.Proxy(self.successor)._pyroRelease()
+            with Pyro5.client.Proxy('PYRO:' + self.successor) as successor:
+                self.sucsuccessor=successor.successor
         except:
 
             list_type=self.partOf.split('/')[1]
@@ -163,10 +160,10 @@ class ListNode(RObject):
                         last.successor=self.sucsuccessor
                         actual_list.last=last.predecessor
                         last.predecessor=self.id
-                        last.predecessor_objects=self.objects.copy()
+                        last.predecessor_objects=deepcopy(self.objects)
                         try:
                             with Pyro5.client.Proxy('PYRO:'+last.successor) as successor:
-                                last.objects = successor.predecessor_objects.copy()
+                                last.objects = deepcopy(successor.predecessor_objects)
                                 successor.predecessor=last.id
                                 last.sucsuccessor=successor.successor
                         except:
@@ -176,16 +173,14 @@ class ListNode(RObject):
             except:
                 print('Error check_succesor last')
             
-            try:
-                with Pyro5.client.Proxy('PYRO:'+self.predecessor) as predecessor:
-                    predecessor.sucsuccessor=self.successor
-            except:
-                print('Error check_succesor predecessor')
-
     def add(self, item:RObject):
         self.objects.appendleft(item)
         try:
             with Pyro5.client.Proxy('PYRO:'+self.successor) as successor:
-                successor.predecessor_objects.appendleft(item)
+                successor.add_predecessor_objects(item)
         except:
             print('Error add successor')
+            self.check_successor()
+
+    def add_predecessor_objects(self, item: RObject):
+        self.predecessor_objects.appendleft(deepcopy(item))

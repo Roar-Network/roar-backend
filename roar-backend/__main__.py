@@ -1,3 +1,4 @@
+from xxlimited import new
 import Pyro5.server as server
 import Pyro5.client as client
 from .dht.chord_node import ChordNode
@@ -30,13 +31,15 @@ class ServerAdmin:
     def __init__(self, daemon: server.Daemon):
         daemon.register(self, "admin")
 
-    def add_chord_node(self, id: str) -> None:
+    def add_chord_node(self, id: str) -> ChordNode:
         node = ChordNode(id)
         daemon.register(node, id.split("@")[0])
+        return node
 
-    def add_list_node(self, id: str) -> None:
+    def add_list_node(self, id: str) -> ListNode:
         node = ListNode(id)
         daemon.register(node, id.split("@")[0])
+        return node
 
 def scan(ip_address):
     arp_request = scapy.ARP(pdst=ip_address)
@@ -63,7 +66,20 @@ def check_chord_rings(node: ChordNode):
         except Exception:
             continue
 
+def check_lists():
+    lists=['inboxes,outboxes','likeds']
+    for ip in NETWORK:
+        for i in lists:
+            try:
+                with client.Proxy(f"PYRO:{i}@{ip}:8002") as node:
+                    for item in node.objects:
+                        new_node=admin.add_list_node(f'{item.id}@{ip}:8002')
+                        new_node.join(item)
+            except:
+                continue
+
 def check_all_rings():
+    check_lists()
     check_chord_rings(ACTORS)
     # check_chord_rings(INBOXES)
     # check_chord_rings(OUTBOXES)

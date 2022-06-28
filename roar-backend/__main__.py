@@ -1,3 +1,5 @@
+from copy import copy
+from xxlimited import new
 import Pyro5.server as server
 import Pyro5.client as client
 from .dht.chord_node import ChordNode
@@ -7,12 +9,12 @@ import socket as sck
 import scapy.all as scapy
 import threading
 import argparse
-from typing import List
+from typing import List, Set
 from .activities import *
 from .api import app
 import uvicorn
 from .actor import Actor
-
+from schedule import every, run_pending
 
 IP: str = sck.gethostbyname(sck.gethostname())
 
@@ -28,15 +30,30 @@ NETWORK: List = []
 @server.behavior(instance_mode="single")
 class ServerAdmin:
     def __init__(self, daemon: server.Daemon):
+        self._system_network: Set[str] = set(IP)
         daemon.register(self, "admin")
 
-    def add_chord_node(self, id: str) -> None:
+    @property
+    def system_network(self) -> Set[str]:
+        return self._system_network
+
+    @system_network.setter
+    def system_network(self, value: Set[str]):
+        self._system_network = value
+
+    def receive_system(self, system: Set[str]):
+        sys_net = copy(system)
+        self.system_network = self._system_network.union(sys_net)
+
+    def add_chord_node(self, id: str) -> ChordNode:
         node = ChordNode(id)
         daemon.register(node, id.split("@")[0])
+        return node
 
-    def add_list_node(self, id: str) -> None:
+    def add_list_node(self, id: str) -> ListNode:
         node = ListNode(id)
         daemon.register(node, id.split("@")[0])
+        return node
 
 def scan(ip_address):
     arp_request = scapy.ARP(pdst=ip_address)
@@ -63,7 +80,32 @@ def check_chord_rings(node: ChordNode):
         except Exception:
             continue
 
+def check_lists():
+    lists=['inboxes,outboxes','likeds']
+    for ip in NETWORK:
+        for i in lists:
+            try:
+                with client.Proxy(f"PYRO:{i}@{ip}:8002") as node:
+                    for item in node.objects:
+                        new_node=admin.add_list_node(f'{item.id}@{ip}:8002')
+                        new_node.join(item)
+            except:
+                continue
+
+def notify_system_network():
+    def notify():   
+        for ip in admin.system_network:
+            try: 
+                with Pyro5.client.Proxy(f"PYRO:admin@{ip}:8002") as admin_sys:
+                    admin_sys.receive_system(admin.system_network)
+            except: 
+                continue
+    every(0.05).seconds.do(notify)
+    while True:
+        run_pending()
+
 def check_all_rings():
+    check_lists()
     check_chord_rings(ACTORS)
     check_chord_rings(INBOXES)
     check_chord_rings(OUTBOXES)
@@ -89,7 +131,7 @@ daemon = server.Daemon("0.0.0.0", 8002)
 
 NETWORK = scan(args.subnet) + args.ip
 
-admin = ServerAdmin(daemon)
+admin: ServerAdmin = ServerAdmin(daemon)
 daemon.register(ACTORS, "actors")
 daemon.register(INBOXES, "inboxes")
 daemon.register(OUTBOXES, "outboxes")
@@ -104,5 +146,6 @@ daemon.register(UnfollowActivity)
 daemon.register(Actor)
 daemon.register(ListCollection)
 threading.Thread(target=check_all_rings).start()
+threading.Thread(target=notify_system_network).start()
 uvicorn.run(app, host="0.0.0.0", port=32020)
 daemon.requestLoop()

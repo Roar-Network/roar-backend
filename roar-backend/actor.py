@@ -2,7 +2,7 @@ from .objects.robject import RObject
 from typing import List
 import Pyro5.client
 import Pyro5.server
-import json
+import socket as sck
 from .dl.list_collection import ListCollection
 
 @Pyro5.server.expose
@@ -33,25 +33,33 @@ class Actor(RObject):
         self.info["shared"]=0
         self.info["likes"]=0
 
-        with json.load('servers.json') as servers:
-            connect_server = servers[0]
-            try:
-                with Pyro5.client.Proxy('PYRO:inboxes@'+connect_server+':8002') as node:
-                    node.add(ListCollection(f'{alias}/inbox',servers))
-            except:
-                print('Error creando inbox')
+        IP: str = sck.gethostbyname(sck.gethostname())
 
-            try:
-                with Pyro5.client.Proxy('PYRO:outboxes@'+connect_server+':8002') as node:
-                    node.add(ListCollection(f'{alias}/outbox',servers))
-            except:
-                print('Error creando outbox')
+        direction_list = []
 
-            try:
-                with Pyro5.client.Proxy('PYRO:likeds@'+connect_server+':8002') as node:
-                    node.add(ListCollection(f'{alias}/liked',servers))
-            except:
-                print('Error creando liked')
+        try:
+            with Pyro5.client.Proxy('PYRO:admin@'+IP+':8002') as admin:
+                direction_list=[item + ':8002' for item in admin.system_network]
+        except:
+            print("Error actor admin")
+
+        try:
+            with Pyro5.client.Proxy('PYRO:inboxes@'+IP+':8002') as node:
+                node.add(ListCollection(f'{alias}/inbox',direction_list))
+        except:
+            print('Error creando inbox')
+
+        try:
+            with Pyro5.client.Proxy('PYRO:outboxes@'+IP+':8002') as node:
+                node.add(ListCollection(f'{alias}/outbox',direction_list))
+        except:
+            print('Error creando outbox')
+
+        try:
+            with Pyro5.client.Proxy('PYRO:likeds@'+IP+':8002') as node:
+                node.add(ListCollection(f'{alias}/liked',direction_list))
+        except:
+            print('Error creando liked')
 
         
     @property

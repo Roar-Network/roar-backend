@@ -425,7 +425,6 @@ async def share_post(content: str, share_post: str, current_user: Actor = Depend
     except:
         raise HTTPException(status_code=500, detail=f"An error has occurred")
 
-    current_user.imfo["shared"]+=1
     return 'success'
 
 
@@ -453,7 +452,6 @@ async def delete_post(post_id: str, current_user: Actor = Depends(get_current_us
 async def follow(user_id, current_user: Actor = Depends(get_current_user)):
     current_user.followin[user_id] = user_id
     current_user.followin_soa += 1
-    current_user.info["following"]+=1
     try:
         with Pyro5.client.Proxy('PYRO:actors@{IP}:8002') as node:
             user = node.search(user_id)
@@ -464,7 +462,6 @@ async def follow(user_id, current_user: Actor = Depends(get_current_user)):
                     FollowActivity('Follow'+user_id, user_id))
                 user.followers[current_user.id] = current_user.id
                 user.followers_sao += 1
-                user.omfo["followers"]+=1
         except:
             raise HTTPException(
                 status_code=500, detail=f"An error has occurred")
@@ -479,13 +476,11 @@ async def follow(user_id, current_user: Actor = Depends(get_current_user)):
 async def unfollow(user_id, current_user: Actor = Depends(get_current_user)):
     del current_user.following[user_id]
     current_user.followin_soa += 1
-    current_user.info["following"]-=1
     try:
         with Pyro5.client.Proxy('PYRO:actors@{IP}:8002') as node:
             user = node.search(user_id)
             del user.followers[current_user.id]
             user.followers_soa += 1
-            user.info["followers"]-=1
 
             try:
                 with Pyro5.client.Proxy('PYRO:outboxes@{IP}:8002') as fol:
@@ -536,7 +531,6 @@ async def unlike(post_id: str, current_user: Actor = Depends(get_current_user)):
             p.unlike(current_user.id)
 
         current_user.posts_soa += 1
-        current_user.info["likes"]-=1
 
     except:
         raise HTTPException(status_code=500, detail=f"An error has occurred")
@@ -544,7 +538,13 @@ async def unlike(post_id: str, current_user: Actor = Depends(get_current_user)):
     
 @app.get("/{alias}/info")
 async def get_info(current_user: Actor = Depends(get_current_user)):
-    return current_user.info
+    info={}
+    info["user_name"]=current_user.user_name
+    info["alias"]=current_user.alias
+    info["followers"]=len(current_user.followers)
+    info["following"]=len(current_user.following)
+    
+    return info
 
 @app.get("/{post}/get_shared_by")
 async def get_info(post_id:str):

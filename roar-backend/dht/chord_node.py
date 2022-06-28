@@ -119,7 +119,7 @@ class ChordNode(RObject):
                 with Pyro5.client.Proxy('PYRO:' + aux_id) as aux:
                     return aux.find_successor(key)
             except:
-                print(aux_id)
+                #print(aux_id)
                 print('Successor not found')
     
     def join(self, other:str)->None:
@@ -184,10 +184,10 @@ class ChordNode(RObject):
     def fix_fingers(self):
         self.next+=1
         if self.next==160:
-            print(self.finger)
-            print(self.predecessor)
-            print(self.successor)
-            print(self.sucsuccessor)
+            #print(self.finger)
+            #print(self.predecessor)
+            #print(self.successor)
+            #print(self.sucsuccessor)
             self.next=0
         self.finger[self.next]=self.find_successor((self.key+2**self.next)%2**160)
         
@@ -227,16 +227,26 @@ class ChordNode(RObject):
 
 
     def search(self,id)->RObject:
+        def take_item(chord_node):
+            if id in chord_node.objects:
+                return chord_node.objects[id]
+            return None
+
         key=int(hashlib.sha1(id.encode('utf8')).hexdigest(),base=16)
+        print(f"Search succesor node of {key} in {self.id}")
         node=self.find_successor(key)
+        print(f"Got node {node}")
         if node is None:
             raise Exception("Error search")
+        elif node == self.id:
+            return take_item(self)
         try :
             with Pyro5.client.Proxy('PYRO:'+node) as nd:
-                if id in nd.objects:
-                    return node.objects[id]
-                else:
-                    return None
+                return take_item(nd)
+                # if id in nd.objects:
+                #     return node.objects[id]
+                # else:
+                #     return None
         except:
             print('Error search')
         

@@ -1,4 +1,4 @@
-FROM roar/server
+FROM roar/system
 
 WORKDIR /roar-backend
 
@@ -9,3 +9,4 @@ EXPOSE 32020
 EXPOSE 8002
 
 CMD ["bash"]
+

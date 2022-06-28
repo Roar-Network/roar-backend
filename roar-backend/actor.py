@@ -24,14 +24,7 @@ class Actor(RObject):
         self.a1=a1
         self.a2=a2
         self.preferences=[]
-        self.info={}
-        self.info["alias"]=alias
-        self.info["user_name"]=user_name
-        self.info["followers"]=0
-        self.info["following"]=0
-        self.info["posts"]=0
-        self.info["shared"]=0
-        self.info["likes"]=0
+    
 
         IP: str = sck.gethostbyname(sck.gethostname())
 
@@ -40,26 +33,26 @@ class Actor(RObject):
         try:
             with Pyro5.client.Proxy('PYRO:admin@'+IP+':8002') as admin:
                 direction_list=[item + ':8002' for item in admin.system_network]
-        except:
-            print("Error actor admin")
+        except Exception as e:
+            print("Error actor admin" + str(e))
 
         try:
             with Pyro5.client.Proxy('PYRO:inboxes@'+IP+':8002') as node:
                 node.add(ListCollection(f'{alias}/inbox',direction_list))
-        except:
-            print('Error creando inbox')
+        except Exception as e:
+            print('Error creando inbox' + str(e))
 
         try:
             with Pyro5.client.Proxy('PYRO:outboxes@'+IP+':8002') as node:
                 node.add(ListCollection(f'{alias}/outbox',direction_list))
-        except:
-            print('Error creando outbox')
+        except Exception as e:
+            print('Error creando outbox' + str(e))
 
         try:
             with Pyro5.client.Proxy('PYRO:likeds@'+IP+':8002') as node:
                 node.add(ListCollection(f'{alias}/liked',direction_list))
-        except:
-            print('Error creando liked')
+        except Exception as e:
+            print('Error creando liked' + str(e))
 
         
     @property
@@ -97,6 +90,10 @@ class Actor(RObject):
     @property
     def most_liked(self):
         return self._most_liked
+    
+    @property
+    def aslias(self):
+        return self.id
     
     @property
     def forgot_password(self,value,a1,a2):

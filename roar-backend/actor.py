@@ -24,14 +24,7 @@ class Actor(RObject):
         self.a1=a1
         self.a2=a2
         self.preferences=[]
-        self.info={}
-        self.info["alias"]=alias
-        self.info["user_name"]=user_name
-        self.info["followers"]=0
-        self.info["following"]=0
-        self.info["posts"]=0
-        self.info["shared"]=0
-        self.info["likes"]=0
+    
 
         IP: str = sck.gethostbyname(sck.gethostname())
 
@@ -97,6 +90,10 @@ class Actor(RObject):
     @property
     def most_liked(self):
         return self._most_liked
+    
+    @property
+    def aslias(self):
+        return self.id
     
     @property
     def forgot_password(self,value,a1,a2):

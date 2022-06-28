@@ -12,10 +12,10 @@ class Post(RObject):
         self._likes={}
         self._shared=[]
         self._replies=[]
-        self.info={}
-        self.info["likes"]=0
-        self.info["shares"]=0
-        self.info["reply"]=0
+        self._info={}
+        self._info["likes"]=0
+        self._info["shares"]=0
+        self._info["reply"]=0
         cat_label=-1
 
     @property
@@ -33,6 +33,10 @@ class Post(RObject):
     @property
     def published(self):
         return self._published
+    
+    @property
+    def info(self):
+        return self._info}
     
     def like(self,alias:str):
         self._likes[alias]=alias    

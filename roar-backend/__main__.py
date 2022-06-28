@@ -30,7 +30,7 @@ NETWORK: List = []
 @server.behavior(instance_mode="single")
 class ServerAdmin:
     def __init__(self, daemon: server.Daemon):
-        self._system_network: Set[str] = set(IP)
+        self._system_network: Set[str] = set([IP])
         daemon.register(self, "admin")
 
     @property
@@ -128,6 +128,8 @@ args = parser.parse_args()
 
 daemon = server.Daemon("0.0.0.0", 8002)
 
+def start_api():
+    uvicorn.run(app, host="0.0.0.0", port=32020)
 
 NETWORK = scan(args.subnet) + args.ip
 
@@ -147,5 +149,5 @@ daemon.register(Actor)
 daemon.register(ListCollection)
 threading.Thread(target=check_all_rings).start()
 threading.Thread(target=notify_system_network).start()
-uvicorn.run(app, host="0.0.0.0", port=32020)
+threading.Thread(target=start_api).start()
 daemon.requestLoop()

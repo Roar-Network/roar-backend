@@ -203,13 +203,13 @@ def create_user(username: str, alias: str, password: str, a1: str, a2: str):
     return 'success'
 
 
-@app.post("/{current_user}/change_password")
+@app.post("/me/change_password")
 async def change_password(password: str, current_user: Actor = Depends(get_current_user)):
     current_user.hashed_password = get_password_hash(password=password)
     return 'success'
 
 
-@app.post("/{alias}/post")
+@app.post("/me/post")
 async def create_post(content: str, reply: str, current_user: Actor = Depends(get_current_user)):
     try:
         moment=datetime.now()
@@ -257,8 +257,9 @@ async def create_post(content: str, reply: str, current_user: Actor = Depends(ge
     return 'success'
 
 
-@app.get("/{alias}/following")
-async def get_following(current_user: Actor = Depends(get_current_user)):
+@app.get("/{alias}/followings")
+async def get_following(alias: str):
+    # TODO: cambiar q sea para cualquier usuario aunq no este loggueado
     if CACHE.is_in(f"{current_user.id}.following") and CACHE.get(f"{current_user.id}.following")[1] == current_user.following_soa:
         return CACHE.get(f"{current_user.id}.following")[0]
 
@@ -291,7 +292,8 @@ async def get_following(current_user: Actor = Depends(get_current_user)):
 
 
 @app.get("/{alias}/followers")
-async def get_followers(current_user: Actor = Depends(get_current_user)):
+async def get_followers(alias: str):
+    # TODO: cambiar para obtener los seguidores aunq no este loggueado
     if CACHE.is_in(f"{current_user.id}.followers") and CACHE.get(f"{current_user.id}.followers")[1] == current_user.following_soa:
         return CACHE.get(f"{current_user.id}.followers")[0]
 
@@ -321,7 +323,8 @@ async def get_followers(current_user: Actor = Depends(get_current_user)):
 
 
 @app.get("/{alias}/posts")
-async def get_posts(current_user: Actor = Depends(get_current_user)):
+async def get_posts(alias: str):
+    # TODO: cambiar para obtener los post aunq no este logueado
     if CACHE.is_in(f"{current_user.id}.posts") and CACHE.get(f"{current_user.id}.posts")[1] == current_user.posts_soa:
         return CACHE.get(f"{current_user.id}.posts")[0]
     posts = []
@@ -350,7 +353,8 @@ async def get_posts(current_user: Actor = Depends(get_current_user)):
 
 
 @app.get("/{alias}/likes")
-async def get_likes(current_user: Actor = Depends(get_current_user)):
+async def get_likes(alias: str):
+    # TODO cambiar para obtener los likes aunq no este logueado
     if CACHE.is_in(f"{current_user.id}.likes") and CACHE.get(f"{current_user.id}.likes")[1] == current_user.likes_soa:
         return CACHE.get(f"{current_user.id}.likes")[0]
     likes = []
@@ -375,7 +379,7 @@ async def get_likes(current_user: Actor = Depends(get_current_user)):
     return likes
 
 
-@app.put("/{alias}/{post_id}/like")
+@app.put("/me/like/{post_id}")
 async def like(post_id: str, current_user: Actor = Depends(get_current_user)):
     try:
 
@@ -396,7 +400,7 @@ async def like(post_id: str, current_user: Actor = Depends(get_current_user)):
     return 'success'
 
 
-@app.put("/{alias}/{post_id}/share_post")
+@app.put("/me/share/{post_id}")
 async def share_post(content: str, share_post: str, current_user: Actor = Depends(get_current_user)):
     try:
         moment = datetime.now()
@@ -436,7 +440,7 @@ async def share_post(content: str, share_post: str, current_user: Actor = Depend
     return 'success'
 
 
-@app.delete("/{alias}/{post_id}/delete_post")
+@app.delete("/me/delete_post/{post_id}")
 async def delete_post(post_id: str, current_user: Actor = Depends(get_current_user)):
     try:
         with Pyro5.client.Proxy(f'PYRO:posts@{IP}:8002') as node:
@@ -456,7 +460,7 @@ async def delete_post(post_id: str, current_user: Actor = Depends(get_current_us
     return 'success'
 
 
-@app.post("/{alias}/{user_id}/follow")
+@app.post("/me/follow/{user_id}")
 async def follow(user_id, current_user: Actor = Depends(get_current_user)):
     current_user.followin[user_id] = user_id
     current_user.followin_soa += 1
@@ -480,7 +484,7 @@ async def follow(user_id, current_user: Actor = Depends(get_current_user)):
     return 'success'
 
 
-@app.delete("/{alias}/{user_id}/unfollow")
+@app.delete("/me/unfollow/{user_id}")
 async def unfollow(user_id, current_user: Actor = Depends(get_current_user)):
     del current_user.following[user_id]
     current_user.followin_soa += 1
@@ -503,7 +507,7 @@ async def unfollow(user_id, current_user: Actor = Depends(get_current_user)):
         
     return 'success'   
 
-@app.post("/{alias}/preferences")
+@app.post("/me/preferences")
 async def set_preferences(preferences:list,current_user: Actor = Depends(get_current_user)):
     pref=[0 for i in range(10)]
     if len(preferences)>0:
@@ -524,7 +528,7 @@ async def set_preferences(preferences:list,current_user: Actor = Depends(get_cur
     return 'succes'
 
 
-@app.put("/{alias}/{post_id}/unlike")
+@app.put("/me/unlike/{post_id}")
 async def unlike(post_id: str, current_user: Actor = Depends(get_current_user)):
     try:
         with Pyro5.client.Proxy(f'PYRO:outboxes@{IP}:8002') as node:
@@ -554,7 +558,7 @@ async def get_info(current_user: Actor = Depends(get_current_user)):
     
     return info
 
-@app.get("/{post}/get_shared_by")
+@app.get("/{post_id}/get_shared_by")
 async def get_info(post_id:str):
     try:
         with Pyro5.client.Proxy(f'PYRO:posts@{IP}:8002') as node:
@@ -566,7 +570,7 @@ async def get_info(post_id:str):
         raise HTTPException(
                 status_code=500, detail=f"An error has occurred")
         
-@app.get("/{post}/get_likes")
+@app.get("/{post_id}/get_likes")
 async def get_info(post_id:str):
     try:
         with Pyro5.client.Proxy(f'PYRO:posts@{IP}:8002') as node:
@@ -578,7 +582,7 @@ async def get_info(post_id:str):
         raise HTTPException(
                 status_code=500, detail=f"An error has occurred")
         
-@app.get("/{post}/get_replies")
+@app.get("/{post_id}/get_replies")
 async def get_info(post_id:str):
     try:
         with Pyro5.client.Proxy(f'PYRO:posts@{IP}:8002') as node:

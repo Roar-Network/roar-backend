@@ -4,7 +4,16 @@ import Pyro5.server
 import Pyro5.client
 from threading import Thread
 import schedule
-from copy import deepcopy
+from ..dl.list_collection import ListCollection
+from ..actor import Actor
+from ..post import Post
+
+
+DICT_STR_TYPE={
+    'ListCollection':ListCollection,
+    'Actor' : Actor,
+    'Post' : Post
+}
 
 @Pyro5.server.expose
 class ChordNode(RObject):
@@ -249,31 +258,38 @@ class ChordNode(RObject):
                 #     return None
         except:
             print('Error search')
-        
 
-    def add(self, item:RObject):
-        key=int(hashlib.sha1(item.id.encode('utf8')).hexdigest(),base=16)
+    def add_item(self,type_class,args):
+        type_instance=DICT_STR_TYPE[type_class]
+        item=type_instance(*args)
+        self.objects[item.id]=item
+
+    def add(self, type_class, args):
+        key=int(hashlib.sha1(args[0].encode('utf8')).hexdigest(),base=16)
+        type_instance=DICT_STR_TYPE[type_class]
+        item=type_instance(*args)
+        print(item.id)
         node=self.find_successor(key)
         if node is None:
             raise Exception("Error add")
         try :
             with Pyro5.client.Proxy('PYRO:'+node) as nd:
-                
-                nd.objects[id]=deepcopy(item)
-
+                nd.ad_item(type_class,args)
                 try:
                     with Pyro5.client.Proxy('PYRO:'+nd.successor) as successor:
-                        successor.add_predecessor_objects(item)
+                        successor.add_predecessor_objects(type_class,args)
                 except:
                     print('Error add successor')
         except:
             print('Error add')
 
-    def add_predecessor_objects(self, item: RObject):
-        self.predecessor_objects[item.id]=deepcopy(item)
+    def add_predecessor_objects(self,type_class,args):
+        item=type_class(*args)
+        self.predecessor_objects[item.id]=item
     
     def remove(self,id):
         key=int(hashlib.sha1(id.encode('utf8')).hexdigest(),base=16)
+        print(key)
         node=self.find_successor(key)
         if node is None:
             raise Exception("Error remove")

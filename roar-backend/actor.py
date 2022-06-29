@@ -17,8 +17,8 @@ class Actor(RObject):
         self._user_name : str = user_name
         self._hashed_password : str = hashed_password
         self._most_liked=[None]*10
-        self.following_soa=0
-        self.followers_soa=0
+        self._following_soa=0
+        self._followers_soa=0
         self.likes_soa=0
         self.posts_soa=0
         self.a1=a1
@@ -38,23 +38,38 @@ class Actor(RObject):
 
         try:
             with Pyro5.client.Proxy('PYRO:inboxes@'+IP+':8002') as node:
-                node.add(ListCollection(f'{alias}/inbox',direction_list))
+                node.add('ListCollection',(f'{alias}/inbox',direction_list))
         except Exception as e:
             print('Error creando inbox' + str(e))
 
         try:
             with Pyro5.client.Proxy('PYRO:outboxes@'+IP+':8002') as node:
-                node.add(ListCollection(f'{alias}/outbox',direction_list))
+                node.add('ListCollection',(f'{alias}/outbox',direction_list))
         except Exception as e:
             print('Error creando outbox' + str(e))
 
         try:
             with Pyro5.client.Proxy('PYRO:likeds@'+IP+':8002') as node:
-                node.add(ListCollection(f'{alias}/liked',direction_list))
+                node.add('ListCollection',(f'{alias}/liked',direction_list))
         except Exception as e:
             print('Error creando liked' + str(e))
 
-        
+    @property
+    def following_soa(self):
+        return self._following_soa
+
+    @following_soa.setter
+    def following_soa(self, value: int):
+        self._following_soa = value
+
+    @property
+    def followers_soa(self):
+        return self._followers_soa
+
+    @followers_soa.setter
+    def followers_soa(self, value: int):
+        self._followers_soa = value
+
     @property
     def inbox(self):
         return self._inbox

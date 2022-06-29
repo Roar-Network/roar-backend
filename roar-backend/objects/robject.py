@@ -15,6 +15,7 @@ class RObject(ABC):
     def id(self):
         return self._id
 
+    @Pyro5.server.expose
     @property
     def type(self):
         return self._type

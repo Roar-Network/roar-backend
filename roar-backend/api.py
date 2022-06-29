@@ -135,6 +135,11 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         raise credentials_exception
     return user
 
+@app.get("/system_network")
+def get_system_network():
+    with Pyro5.client.Proxy(f'PYRO:admin@{IP}:8002') as node:
+        return list(node.system_network)
+
 @app.put("/forgot_password")
 def forgot_password(alias:str,a1:str,a2:str,password:str):
     try:

@@ -36,7 +36,7 @@ class Post(RObject):
     
     @property
     def info(self):
-        return self._info}
+        return self._info
     
     def like(self,alias:str):
         self._likes[alias]=alias    

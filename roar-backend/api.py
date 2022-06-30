@@ -21,6 +21,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from datetime import datetime, timedelta
+from Crypto.Cipher import PKCS1_OAEP
+from Crypto.PublicKey import RSA
+from Crypto.Hash import SHA256
+from base64 import b64decode
+from rsa import decrypt
 
 ##Matrix
 GRAPH = array([
@@ -41,7 +46,6 @@ GRAPH = array([
 CLASSIFIER=TextClassifier()
 ##
 
-
 # to get a string like this run:
 # openssl rand -hex 32
 SECRET_KEY = "97af2450780e8090d64696b529c104c1aadbc356ecbed48feb4e2b7db4b42622"
@@ -50,6 +54,11 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 CACHE = Cache(512)
 IP: str = sck.gethostbyname(sck.gethostname())
 
+def decrypt(message:str)->str:
+    key=RSA.import_key('-----BEGIN RSA PRIVATE KEY-----\nMIICXAIBAAKBgQCyiZht8PYKDNR0VNQKzmBD1s44BSsEKTjQyyoFZFZqU0oGmpP3\nht6wqVMV1VCyCNf9E3s3tzNgD5IkDg6wDC4rculcx2yQ7GsfSnU49/+yu2WoBF5J\nHzDcsWEJe9KmeNTp988JxeBjxtmORGLCfFLYDxiOU7VVPCo98nm16PkSmQIDAQAB\nAoGAGVeTleNyoRmSHJMf6ArEOkzmx6fgI76QLH7yD4LfC0eYRdiyMRvpRy05uGsn\ngaXktq0Ju+5asgNzzH9cUVvhP5dAAaTIeBB0NcwFDNO7KKwd6azwOKX7vjR8XaD3\nqAItIVwN7cvTZ08qelxuFlg+7fiUI1Ij45lXv9+oQhYt0BMCQQC4twFbmXBzoGrT\nQ+pWNWXSSE2OKAOck6UCOaLtZ/Gsnv/DjOG41zPhFQQX7UsqDJvSbvrAk/BH4aGX\n8LmN3Xh/AkEA93BK6lCesSvzr27RQl3nYjY5Eirx4voCDmIVL5AlrGh0Eliy8tFt\nzPqBNHDgZTbG8t2scdcAqrbnI/JS2fKo5wJBALgseKUdc9tGSt1FbWTxrwmhX/rq\n+Nbo+/EhCMvQBU9J5djUIshLgwXdD4zP5E8T7VY/o7Pajg0N8zJtKoZCGf8CQDWq\nbzUewyxeAf48pLomL7cHV51vHwNBggyojTvBocog5XvNLRKpBY19j2RWTvTkyoWG\nOo5+OTDNdpg/SGTo0mUCQAM5UVtFvO7wNId/RZuuOBc+176LWvuPHnbRq1BRr7M9\nNMYIfsf1q0hBNCKEMO8SUZ+dNPkNdqtgambqZUw9Wn0=\n-----END RSA PRIVATE KEY-----')
+    cipher=PKCS1_OAEP.new(key,hashAlgo=SHA256)
+    return cipher.decrypt(b64decode(message))
+    
 class Token(BaseModel):
     access_token: str
     token_type: str
@@ -147,9 +156,9 @@ def forgot_password(alias:str,a1:str,a2:str,password:str):
             user=node.search(alias)
             if user is None: raise HTTPException(status_code=404, detail=f"Username {alias} not found")
             
-            _a1=get_password_hash(a1)
-            _a2=get_password_hash(a2)
-            _password=get_password_hash(password)
+            _a1=get_password_hash(decrypt(a1))
+            _a2=get_password_hash(decrypt(a2))
+            _password=get_password_hash(decrypt(password))
             
             if user.forgot_password(_password,_a1,_a2):
                 return "success"
@@ -192,7 +201,7 @@ def create_user(username: str, alias: str, password: str, a1: str, a2: str):
             print("connected")
             if node.search(alias) is None:
                 print("not found")
-                node.add("Actor",(alias, username, get_password_hash(password), a1, a2))
+                node.add("Actor",(alias, username, get_password_hash(decrypt(password)), get_password_hash(decrypt(a1)), get_password_hash(decrypt(a2))))
 
             else:
                 raise HTTPException(
@@ -205,7 +214,7 @@ def create_user(username: str, alias: str, password: str, a1: str, a2: str):
 
 @app.post("/me/change_password")
 async def change_password(password: str, current_user: Actor = Depends(get_current_user)):
-    current_user.hashed_password = get_password_hash(password=password)
+    current_user.hashed_password = get_password_hash(password=decrypt(password))
     return 'success'
 
 
@@ -581,7 +590,7 @@ async def unlike(post_id: str, current_user: Actor = Depends(get_current_user)):
     
     
 @app.get("/{alias}/info")
-async def get_info(current_user: Actor = Depends(get_current_user)):
+async def get_user_info(current_user: Actor = Depends(get_current_user)):
     info={}
     info["user_name"]=current_user.user_name
     info["alias"]=current_user.alias
@@ -591,7 +600,7 @@ async def get_info(current_user: Actor = Depends(get_current_user)):
     return info
 
 @app.get("/{post_id}/get_shared_by")
-async def get_info(post_id:str):
+async def get_shared_info(post_id:str):
     try:
         with Pyro5.client.Proxy(f'PYRO:posts@{IP}:8002') as node:
             sp = node.search(share_post)
@@ -603,7 +612,7 @@ async def get_info(post_id:str):
                 status_code=500, detail=f"An error has occurred")
         
 @app.get("/{post_id}/get_likes")
-async def get_info(post_id:str):
+async def get_likes_info(post_id:str):
     try:
         with Pyro5.client.Proxy(f'PYRO:posts@{IP}:8002') as node:
             sp = node.search(share_post)
@@ -615,7 +624,7 @@ async def get_info(post_id:str):
                 status_code=500, detail=f"An error has occurred")
         
 @app.get("/{post_id}/get_replies")
-async def get_info(post_id:str):
+async def get_replies_info(post_id:str):
     try:
         with Pyro5.client.Proxy(f'PYRO:posts@{IP}:8002') as node:
             sp = node.search(share_post)

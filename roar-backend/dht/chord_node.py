@@ -236,10 +236,6 @@ class ChordNode(RObject):
 
 
     def search(self,id)->RObject:
-        def take_item(chord_node):
-            if id in chord_node.objects:
-                return chord_node.objects[id]
-            return None
 
         key=int(hashlib.sha1(id.encode('utf8')).hexdigest(),base=16)
         print(f"Search succesor node of {key} in {self.id}")
@@ -248,14 +244,10 @@ class ChordNode(RObject):
         if node is None:
             raise Exception("Error search")
         elif node == self.id:
-            return take_item(self)
+            return self.objects[id] if id in self.objects else None
         try :
             with Pyro5.client.Proxy('PYRO:'+node) as nd:
-                return take_item(nd)
-                # if id in nd.objects:
-                #     return node.objects[id]
-                # else:
-                #     return None
+                return nd.objects[id] if id in nd.objects else None
         except:
             print('Error search')
 
@@ -263,18 +255,20 @@ class ChordNode(RObject):
         type_instance=DICT_STR_TYPE[type_class]
         item=type_instance(*args)
         self.objects[item.id]=item
+        try:
+            self._pyroDaemon.register(item)
+        except Exception as e:
+            print(self._pyroDaemon.objectsById)
+            print(str(e))
 
     def add(self, type_class, args):
         key=int(hashlib.sha1(args[0].encode('utf8')).hexdigest(),base=16)
-        type_instance=DICT_STR_TYPE[type_class]
-        item=type_instance(*args)
-        print(item.id)
         node=self.find_successor(key)
         if node is None:
             raise Exception("Error add")
         try :
             with Pyro5.client.Proxy('PYRO:'+node) as nd:
-                nd.ad_item(type_class,args)
+                nd.add_item(type_class,args)
                 try:
                     with Pyro5.client.Proxy('PYRO:'+nd.successor) as successor:
                         successor.add_predecessor_objects(type_class,args)
@@ -284,12 +278,12 @@ class ChordNode(RObject):
             print('Error add')
 
     def add_predecessor_objects(self,type_class,args):
-        item=type_class(*args)
+        type_instance=DICT_STR_TYPE[type_class]
+        item=type_instance(*args)
         self.predecessor_objects[item.id]=item
     
     def remove(self,id):
         key=int(hashlib.sha1(id.encode('utf8')).hexdigest(),base=16)
-        print(key)
         node=self.find_successor(key)
         if node is None:
             raise Exception("Error remove")

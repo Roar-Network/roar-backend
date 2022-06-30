@@ -16,15 +16,17 @@ class ListCollection(Collection):
 
         self._current=None
         self._top=32
-
+        
         servers_list:List[ListNode]=[]
         
+
         for server in servers:
             try:
                 with Pyro5.client.Proxy('PYRO:'+'admin@'+server) as admin:
                     admin.add_list_node(id+'@'+server)
-            except:
+            except Exception as e:
                 print('Error creando nodos en el servidor')
+                print(str(e))
             node=ListNode(id+'@'+server)
             servers_list.append(node)
         

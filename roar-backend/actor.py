@@ -3,7 +3,6 @@ from typing import List
 import Pyro5.client
 import Pyro5.server
 import socket as sck
-from .dl.list_collection import ListCollection
 
 @Pyro5.server.expose
 class Actor(RObject):

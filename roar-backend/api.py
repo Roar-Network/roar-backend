@@ -259,16 +259,24 @@ async def create_post(content: str, reply: str, current_user: Actor = Depends(ge
 
 @app.get("/{alias}/followings")
 async def get_following(alias: str):
-    # TODO: cambiar q sea para cualquier usuario aunq no este loggueado
-    if CACHE.is_in(f"{current_user.id}.following") and CACHE.get(f"{current_user.id}.following")[1] == current_user.following_soa:
-        return CACHE.get(f"{current_user.id}.following")[0]
+    user=None
+    try:
+        with Pyro5.client.Proxy(f'PYRO:actors@{IP}:8002') as node:
+            user=node.search(alias)
+        
+    except:
+       raise HTTPException(
+                status_code=500, detail=f"An error has occurred")
+        
+    if user!=None and CACHE.is_in(f"{user.id}.following") and CACHE.get(f"{user.id}.following")[1] == user.following_soa:
+        return CACHE.get(f"{user.id}.following")[0]
 
     else:
         following = {}
         try:
             with Pyro5.client.Proxy(f'PYRO:actors@{IP}:8002') as node:
 
-                for i in current_user.following:
+                for i in user.following:
 
                     usr = node.search(i)
                     if usr is None:
@@ -282,26 +290,33 @@ async def get_following(alias: str):
             raise HTTPException(
                 status_code=500, detail=f"An error has occurred")
 
-        if CACHE.is_in(f"{current_user.id}.following"):
-            CACHE._memory[CACHE._hash(f"{current_user.id}.following")] = CacheItem(
-                [deepcopy(following), current_user.following_soa])
+        if CACHE.is_in(f"{user.id}.following"):
+            CACHE._memory[CACHE._hash(f"{user.id}.following")] = CacheItem(
+                [deepcopy(following), user.following_soa])
         else:
-            CACHE.add(key=f"{current_user.id}.following", value=[
-                      deepcopy(following), current_user.following_soa])
+            CACHE.add(key=f"{user.id}.following", value=[
+                      deepcopy(following), user.following_soa])
         return following
 
 
 @app.get("/{alias}/followers")
 async def get_followers(alias: str):
-    # TODO: cambiar para obtener los seguidores aunq no este loggueado
-    if CACHE.is_in(f"{current_user.id}.followers") and CACHE.get(f"{current_user.id}.followers")[1] == current_user.following_soa:
-        return CACHE.get(f"{current_user.id}.followers")[0]
+    user=None
+    try:
+        with Pyro5.client.Proxy(f'PYRO:actors@{IP}:8002') as node:
+            user=node.search(alias)
+        
+    except:
+       raise HTTPException(
+                status_code=500, detail=f"An error has occurred")
+    if user!=None and CACHE.is_in(f"{user.id}.followers") and CACHE.get(f"{user.id}.followers")[1] == user.following_soa:
+        return CACHE.get(f"{user.id}.followers")[0]
 
     else:
         followers = {}
         try:
             with Pyro5.client.Proxy(f'PYRO:actors@{IP}:8002') as node:
-                for i in current_user.followers:
+                for i in user.followers:
 
                     usr = node.search(i)
                     if usr is None:
@@ -313,24 +328,31 @@ async def get_followers(alias: str):
             raise HTTPException(
                 status_code=500, detail=f"An error has occurred")
 
-        if CACHE.is_in(f"{current_user.id}.followers"):
-            CACHE._memory[CACHE._hash(f"{current_user.id}.followers")] = CacheItem(
-                [deepcopy(followers), current_user.followers_soa])
+        if CACHE.is_in(f"{user.id}.followers"):
+            CACHE._memory[CACHE._hash(f"{user.id}.followers")] = CacheItem(
+                [deepcopy(followers), user.followers_soa])
         else:
-            CACHE.add(key=f"{current_user.id}.followers", value=[
-                      deepcopy(followers), current_user.followers_soa])
+            CACHE.add(key=f"{user.id}.followers", value=[
+                      deepcopy(followers), user.followers_soa])
         return followers
 
 
 @app.get("/{alias}/posts")
 async def get_posts(alias: str):
-    # TODO: cambiar para obtener los post aunq no este logueado
-    if CACHE.is_in(f"{current_user.id}.posts") and CACHE.get(f"{current_user.id}.posts")[1] == current_user.posts_soa:
-        return CACHE.get(f"{current_user.id}.posts")[0]
+    user=None
+    try:
+        with Pyro5.client.Proxy(f'PYRO:actors@{IP}:8002') as node:
+            user=node.search(alias)
+        
+    except:
+       raise HTTPException(
+                status_code=500, detail=f"An error has occurred")
+    if user!=None and CACHE.is_in(f"{user.id}.posts") and CACHE.get(f"{user.id}.posts")[1] == user.posts_soa:
+        return CACHE.get(f"{user.id}.posts")[0]
     posts = []
     try:
         with Pyro5.client.Proxy(f'PYRO:outboxes@{IP}:8002') as node:
-            usr_ob = node.search(current_user.outbox)
+            usr_ob = node.search(user.outbox)
 
             with Pyro5.client.Proxy(f'PYRO:posts@{IP}:8002') as post_dht:
                 for i in usr_ob.items:
@@ -342,25 +364,32 @@ async def get_posts(alias: str):
     except:
         raise HTTPException(status_code=500, detail=f"An error has occurred")
 
-    if CACHE.is_in(f"{current_user.id}.posts"):
-        CACHE._memory[CACHE._hash(f"{current_user.id}.posts")] = CacheItem(
-            [deepcopy(posts), current_user.posts_soa])
+    if CACHE.is_in(f"{user.id}.posts"):
+        CACHE._memory[CACHE._hash(f"{user.id}.posts")] = CacheItem(
+            [deepcopy(posts), user.posts_soa])
     else:
-        CACHE.add(key=f"{current_user.id}.posts", value=[
-                  deepcopy(posts), current_user.posts_soa])
+        CACHE.add(key=f"{user.id}.posts", value=[
+                  deepcopy(posts), user.posts_soa])
 
     return posts
 
 
 @app.get("/{alias}/likes")
 async def get_likes(alias: str):
-    # TODO cambiar para obtener los likes aunq no este logueado
-    if CACHE.is_in(f"{current_user.id}.likes") and CACHE.get(f"{current_user.id}.likes")[1] == current_user.likes_soa:
-        return CACHE.get(f"{current_user.id}.likes")[0]
+    user=None
+    try:
+        with Pyro5.client.Proxy(f'PYRO:actors@{IP}:8002') as node:
+            user=node.search(alias)
+        
+    except:
+       raise HTTPException(
+                status_code=500, detail=f"An error has occurred")
+    if user!=None and CACHE.is_in(f"{user.id}.likes") and CACHE.get(f"{user.id}.likes")[1] == user.likes_soa:
+        return CACHE.get(f"{user.id}.likes")[0]
     likes = []
     try:
         with Pyro5.client.Proxy(f'PYRO:outboxes@{IP}:8002') as node:
-            usr_ob = node.search(current_user.outbox)
+            usr_ob = node.search(user.outbox)
 
             with Pyro5.client.Proxy(f'PYRO:posts@{IP}:8002') as post_dht:
                 for i in usr_ob.items:
@@ -369,12 +398,12 @@ async def get_likes(alias: str):
     except:
         raise HTTPException(status_code=500, detail=f"An error has occurred")
 
-    if CACHE.is_in(f"{current_user.id}.likes"):
-        CACHE._memory[CACHE._hash(f"{current_user.id}.likes")] = CacheItem(
-            [deepcopy(likes), current_user.likes_soa])
+    if CACHE.is_in(f"{user.id}.likes"):
+        CACHE._memory[CACHE._hash(f"{user.id}.likes")] = CacheItem(
+            [deepcopy(likes), user.likes_soa])
     else:
-        CACHE.add(key=f"{current_user.id}.likes", value=[
-                  deepcopy(likes), current_user.likes_soa])
+        CACHE.add(key=f"{user.id}.likes", value=[
+                  deepcopy(likes), user.likes_soa])
 
     return likes
 

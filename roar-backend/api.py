@@ -595,7 +595,6 @@ async def unlike(post_id: str, current_user: Actor = Depends(get_current_user)):
     
     
 @app.get("/{alias}/info")
-<<<<<<< HEAD
 def get_info(alias: str):
     with Pyro5.client.Proxy(f'PYRO:actors@{IP}:8002') as node:
         actor = node.search(alias)
@@ -609,16 +608,6 @@ def get_info(alias: str):
             info["following"]=len(actor.following)
             
             return info
-=======
-async def get_user_info(current_user: Actor = Depends(get_current_user)):
-    info={}
-    info["user_name"]=current_user.user_name
-    info["alias"]=current_user.alias
-    info["followers"]=len(current_user.followers)
-    info["following"]=len(current_user.following)
-    
-    return info
->>>>>>> 19858a2419906c8b644fc782774104aa68042736
 
 @app.get("/{post_id}/get_shared_by")
 async def get_shared_info(post_id:str):

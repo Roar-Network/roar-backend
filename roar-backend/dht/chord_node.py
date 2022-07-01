@@ -258,7 +258,6 @@ class ChordNode(RObject):
         try:
             self._pyroDaemon.register(item)
         except Exception as e:
-            print(self._pyroDaemon.objectsById)
             print(str(e))
 
     def add(self, type_class, args):

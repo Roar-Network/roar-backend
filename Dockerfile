@@ -1,4 +1,4 @@
-FROM roar/system
+FROM roar/server
 
 WORKDIR /roar-backend
 

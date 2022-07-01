@@ -2,12 +2,22 @@ from copy import deepcopy
 import Pyro5.server
 import Pyro5.client
 from collections import deque
-from typing import List, Deque, Tuple
 from ..objects.robject import RObject
 from threading import Thread
 import schedule
-import time
 
+from ..activities import *
+from ..post import Post
+
+DICT_STR_TYPE={
+    'CreateActivity':CreateActivity,
+    'FollowActivity' : FollowActivity,
+    'LikeActivity' : LikeActivity,
+    'ShareActivity': ShareActivity,
+    'DeleteActivity': DeleteActivity,
+    'UnfollowActivity': UnfollowActivity,
+    'Post' : Post
+}
 
 @Pyro5.server.expose
 class ListNode(RObject):
@@ -16,6 +26,7 @@ class ListNode(RObject):
         self._successor : str = id
         self._predecessor : str = id
         self._objects = deque()
+        self._objects_ids = set()
         self._predecessor_objects = deque()
         self._sucsuccessor : str = id
         self._partOf : str = None
@@ -35,6 +46,10 @@ class ListNode(RObject):
     @property
     def objects(self):
         return self._objects
+
+    @property
+    def objects_ids(self):
+        return self._objects_ids
 
     @property
     def predecessor_objects(self):
@@ -173,14 +188,25 @@ class ListNode(RObject):
             except:
                 print('Error check_succesor last')
             
-    def add(self, item:RObject):
+    def add(self, type_class, args):
+
+        type_instance=DICT_STR_TYPE[type_class]
+        item=type_instance(*args)
         self.objects.appendleft(item)
+        self.objects_ids.add(item.id)
+        try:
+            self._pyroDaemon.register(item)
+        except Exception as e:
+            print(str(e))
+
         try:
             with Pyro5.client.Proxy('PYRO:'+self.successor) as successor:
-                successor.add_predecessor_objects(item)
+                successor.add_predecessor_objects(type_class,args)
         except:
             print('Error add successor')
             self.check_successor()
 
-    def add_predecessor_objects(self, item: RObject):
-        self.predecessor_objects.appendleft(deepcopy(item))
+    def add_predecessor_objects(self,type_class,args):
+        type_instance=DICT_STR_TYPE[type_class]
+        item=type_instance(*args)
+        self.predecessor_objects.appendleft(item)

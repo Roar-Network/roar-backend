@@ -1,3 +1,4 @@
+from turtle import position
 import Pyro5.server
 import Pyro5.client
 from typing import List
@@ -157,20 +158,45 @@ class ListCollection(Collection):
             losser_real_node._pyroRelease()
             self.current=actual_node
 
-    def add(self, item):
+    def add(self, type_class, args):
         try:
             with Pyro5.client.Proxy('PYRO:'+self.current) as current:
                 if self.top <= len (current.objects):
                     if self.current != self.last:
                         self.current = current.id
-                        self.add(item)
+                        self.add(type_class, args)
                     else:
                         self.allocate()
-                        self.add(item)
+                        self.add(type_class, args)
                 else:
-                    current.add(item)
+                    current.add(type_class, args)
         except:
             print('Error asignando en la red')
+
+    def remove(self, id):
+        actual_node=None
+        try:
+            with Pyro5.client.Proxy('PYRO:' + self.current) as node:
+                if id in node.objects_ids:
+                    for i in node.objects:
+                        if i.id==id:
+                            node.objects.remove(i)
+                            return
+                actual_node = node.predecessor
+        except:
+            print('Error remove')
+
+        while actual_node != self.last:
+            try:
+                with Pyro5.client.Proxy('PYRO:' + actual_node) as node:
+                    if id in node.objects_ids:
+                        for i in node.objects:
+                            if i.id==id:
+                                node.objects.remove(i)
+                                return
+                actual_node = node.predecessor
+            except:
+                print('Error items')
 
     @property
     def items(self):

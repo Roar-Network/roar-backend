@@ -26,6 +26,7 @@ class ListNode(RObject):
         self._successor : str = id
         self._predecessor : str = id
         self._objects = deque()
+        self._objects_ids = set()
         self._predecessor_objects = deque()
         self._sucsuccessor : str = id
         self._partOf : str = None
@@ -45,6 +46,10 @@ class ListNode(RObject):
     @property
     def objects(self):
         return self._objects
+
+    @property
+    def objects_ids(self):
+        return self._objects_ids
 
     @property
     def predecessor_objects(self):
@@ -188,6 +193,7 @@ class ListNode(RObject):
         type_instance=DICT_STR_TYPE[type_class]
         item=type_instance(*args)
         self.objects.appendleft(item)
+        self.objects_ids.add(item.id)
         try:
             self._pyroDaemon.register(item)
         except Exception as e:

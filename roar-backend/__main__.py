@@ -47,13 +47,15 @@ class ServerAdmin:
 
     def add_chord_node(self, id: str) -> ChordNode:
         node = ChordNode(id)
-        daemon.register(node, id.split("@")[0])
-        return node
+        aux_id=id.split('@')[0]
+        if not aux_id in daemon.objectsById:
+            daemon.register(node, aux_id)
 
     def add_list_node(self, id: str) -> ListNode:
         node = ListNode(id)
-        daemon.register(node, id.split("@")[0])
-        return node
+        aux_id=id.split('@')[0]
+        if not aux_id in daemon.objectsById:
+            daemon.register(node, aux_id)
 
 def scan(ip_address):
     arp_request = scapy.ARP(pdst=ip_address)
@@ -112,11 +114,11 @@ def check_all_rings():
     check_chord_rings(LIKEDS)
     check_chord_rings(POSTS)
 
-    print('actors=',ACTORS.successor)
-    print('inboxes=',INBOXES.successor)
-    print('outboxes=',OUTBOXES.successor)
-    print('likeds=',LIKEDS.successor)
-    print('posts=',POSTS.successor)
+    # print('actors=',ACTORS.successor)
+    # print('inboxes=',INBOXES.successor)
+    # print('outboxes=',OUTBOXES.successor)
+    # print('likeds=',LIKEDS.successor)
+    # print('posts=',POSTS.successor)
 
 
 parser = argparse.ArgumentParser(description="Start backend server of Roar.")
@@ -139,14 +141,14 @@ daemon.register(INBOXES, "inboxes")
 daemon.register(OUTBOXES, "outboxes")
 daemon.register(LIKEDS, "likeds")
 daemon.register(POSTS, "posts")
-daemon.register(CreateActivity)
-daemon.register(FollowActivity)
-daemon.register(LikeActivity)
-daemon.register(ShareActivity)
-daemon.register(DeleteActivity)
-daemon.register(UnfollowActivity)
-daemon.register(Actor)
-daemon.register(ListCollection)
+# daemon.register(CreateActivity)
+# daemon.register(FollowActivity)
+# daemon.register(LikeActivity)
+# daemon.register(ShareActivity)
+# daemon.register(DeleteActivity)
+# daemon.register(UnfollowActivity)
+# daemon.register(Actor)
+# daemon.register(ListCollection)
 threading.Thread(target=check_all_rings).start()
 threading.Thread(target=notify_system_network).start()
 threading.Thread(target=start_api).start()

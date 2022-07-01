@@ -10,22 +10,27 @@ import time
 class ListCollection(Collection):
     def __init__(self, id: str,servers:List[str]) -> None:
         super().__init__(id, "ListCollection")
+   
         if len(servers)==0:
             raise Exception('Insuficient servers')
+
         self._current=None
         self._top=32
-
+        
         servers_list:List[ListNode]=[]
         
+
         for server in servers:
             try:
                 with Pyro5.client.Proxy('PYRO:'+'admin@'+server) as admin:
                     admin.add_list_node(id+'@'+server)
-            except:
+            except Exception as e:
                 print('Error creando nodos en el servidor')
+                print(str(e))
             node=ListNode(id+'@'+server)
             servers_list.append(node)
         
+
         self._first=servers_list[0]
         self._last=servers_list[-1]
 
@@ -35,8 +40,10 @@ class ListCollection(Collection):
         for i in range(1,len(servers_list)):
             servers_list[i].predecessor=servers_list[i-1]
 
+
         self._first.predecessor=self._last
         self._last.successor=self._first
+
 
         for server in servers_list:
             server.sucsuccessor=server.successor.successor
@@ -46,11 +53,11 @@ class ListCollection(Collection):
                 with Pyro5.client.Proxy('PYRO:'+server.id) as node:
                     node.successor=server.successor.id
                     node.predecessor=server.predecessor.id
-                    node.sucsuccessor=server.succesor.id
+                    node.sucsuccessor=server.successor.id
                     node.top=self._top
                     node.partOf=self.id
-            except:
-                print('Error asignando en la red')
+            except Exception as e:
+                print(str(e))
 
         self._first=servers_list[0].id
         self._last=servers_list[-1].id
@@ -72,6 +79,14 @@ class ListCollection(Collection):
     @last.setter
     def last(self, value):    
         self._last = value
+    
+    @property
+    def current(self):             
+        return self._current
+
+    @current.setter
+    def current(self, value):    
+        self.current = value
 
     @property
     def top(self):             

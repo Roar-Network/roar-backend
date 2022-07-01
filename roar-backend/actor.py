@@ -3,7 +3,6 @@ from typing import List
 import Pyro5.client
 import Pyro5.server
 import socket as sck
-from .dl.list_collection import ListCollection
 
 @Pyro5.server.expose
 class Actor(RObject):
@@ -38,19 +37,19 @@ class Actor(RObject):
 
         try:
             with Pyro5.client.Proxy('PYRO:inboxes@'+IP+':8002') as node:
-                node.add(ListCollection(f'{alias}/inbox',direction_list))
+                node.add('ListCollection',(f'{alias}/inbox',direction_list))
         except Exception as e:
             print('Error creando inbox' + str(e))
 
         try:
             with Pyro5.client.Proxy('PYRO:outboxes@'+IP+':8002') as node:
-                node.add(ListCollection(f'{alias}/outbox',direction_list))
+                node.add('ListCollection',(f'{alias}/outbox',direction_list))
         except Exception as e:
             print('Error creando outbox' + str(e))
 
         try:
             with Pyro5.client.Proxy('PYRO:likeds@'+IP+':8002') as node:
-                node.add(ListCollection(f'{alias}/liked',direction_list))
+                node.add('ListCollection',(f'{alias}/liked',direction_list))
         except Exception as e:
             print('Error creando liked' + str(e))
 

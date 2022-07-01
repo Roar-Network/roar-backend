@@ -21,6 +21,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from datetime import datetime, timedelta
+from Crypto.Cipher import PKCS1_OAEP
+from Crypto.PublicKey import RSA
+from Crypto.Hash import SHA256
+from base64 import b64decode
+from rsa import decrypt
 
 ##Matrix
 GRAPH = array([
@@ -41,7 +46,6 @@ GRAPH = array([
 CLASSIFIER=TextClassifier()
 ##
 
-
 # to get a string like this run:
 # openssl rand -hex 32
 SECRET_KEY = "97af2450780e8090d64696b529c104c1aadbc356ecbed48feb4e2b7db4b42622"
@@ -50,6 +54,11 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 CACHE = Cache(512)
 IP: str = sck.gethostbyname(sck.gethostname())
 
+def decrypt(message:str)->str:
+    key=RSA.import_key('-----BEGIN RSA PRIVATE KEY-----\nMIICXAIBAAKBgQCyiZht8PYKDNR0VNQKzmBD1s44BSsEKTjQyyoFZFZqU0oGmpP3\nht6wqVMV1VCyCNf9E3s3tzNgD5IkDg6wDC4rculcx2yQ7GsfSnU49/+yu2WoBF5J\nHzDcsWEJe9KmeNTp988JxeBjxtmORGLCfFLYDxiOU7VVPCo98nm16PkSmQIDAQAB\nAoGAGVeTleNyoRmSHJMf6ArEOkzmx6fgI76QLH7yD4LfC0eYRdiyMRvpRy05uGsn\ngaXktq0Ju+5asgNzzH9cUVvhP5dAAaTIeBB0NcwFDNO7KKwd6azwOKX7vjR8XaD3\nqAItIVwN7cvTZ08qelxuFlg+7fiUI1Ij45lXv9+oQhYt0BMCQQC4twFbmXBzoGrT\nQ+pWNWXSSE2OKAOck6UCOaLtZ/Gsnv/DjOG41zPhFQQX7UsqDJvSbvrAk/BH4aGX\n8LmN3Xh/AkEA93BK6lCesSvzr27RQl3nYjY5Eirx4voCDmIVL5AlrGh0Eliy8tFt\nzPqBNHDgZTbG8t2scdcAqrbnI/JS2fKo5wJBALgseKUdc9tGSt1FbWTxrwmhX/rq\n+Nbo+/EhCMvQBU9J5djUIshLgwXdD4zP5E8T7VY/o7Pajg0N8zJtKoZCGf8CQDWq\nbzUewyxeAf48pLomL7cHV51vHwNBggyojTvBocog5XvNLRKpBY19j2RWTvTkyoWG\nOo5+OTDNdpg/SGTo0mUCQAM5UVtFvO7wNId/RZuuOBc+176LWvuPHnbRq1BRr7M9\nNMYIfsf1q0hBNCKEMO8SUZ+dNPkNdqtgambqZUw9Wn0=\n-----END RSA PRIVATE KEY-----')
+    cipher=PKCS1_OAEP.new(key,hashAlgo=SHA256)
+    return cipher.decrypt(b64decode(message))
+    
 class Token(BaseModel):
     access_token: str
     token_type: str
@@ -151,9 +160,9 @@ def forgot_password(alias:str,a1:str,a2:str,password:str):
             user=node.search(alias)
             if user is None: raise HTTPException(status_code=404, detail=f"Username {alias} not found")
             
-            _a1=get_password_hash(a1)
-            _a2=get_password_hash(a2)
-            _password=get_password_hash(password)
+            _a1=get_password_hash(decrypt(a1))
+            _a2=get_password_hash(decrypt(a2))
+            _password=get_password_hash(decrypt(password))
             
             if user.forgot_password(_password,_a1,_a2):
                 return "success"
@@ -197,7 +206,7 @@ def create_user(username: str, alias: str, password: str, a1: str, a2: str):
             print("connected")
             if node.search(alias) is None:
                 print("not found")
-                node.add(Actor(alias, username, get_password_hash(password), a1, a2))
+                node.add("Actor",(alias, username, get_password_hash(decrypt(password)), get_password_hash(decrypt(a1)), get_password_hash(decrypt(a2))))
 
             else:
                 raise HTTPException(
@@ -208,25 +217,25 @@ def create_user(username: str, alias: str, password: str, a1: str, a2: str):
     return 'success'
 
 
-@app.post("/{current_user}/change_password")
+@app.post("/me/change_password")
 async def change_password(password: str, current_user: Actor = Depends(get_current_user)):
-    current_user.hashed_password = get_password_hash(password=password)
+    current_user.hashed_password = get_password_hash(password=decrypt(password))
     return 'success'
 
 
-@app.post("/{alias}/post")
+@app.post("/me/post")
 async def create_post(content: str, reply: str, current_user: Actor = Depends(get_current_user)):
     try:
         moment=datetime.now()
         post = Post(current_user.id+str(moment),current_user.id, content, reply, moment)
         
-        ca = CreateActivity("Create"+post.id,post.author,post.id,post.published,current_user.followers,None)
+        #ca = CreateActivity("Create"+post.id,post.author,post.id,post.published,current_user.followers,None)
 
         with Pyro5.client.Proxy(f'PYRO:posts@{IP}:8002') as node:
-            node.add(post)
+            node.add("Post",(current_user.id+str(moment),current_user.id, content, reply, moment))
 
         with Pyro5.client.Proxy(f'PYRO:outboxes@{IP}:8002') as node:
-            node.search(current_user.outbox).add(ca)
+            node.search(current_user.outbox).add("CreateActivity",("Create"+post.id,post.author,post.id,post.published,current_user.followers,None))
 
         current_user.posts_soa += 1
         
@@ -248,7 +257,7 @@ async def create_post(content: str, reply: str, current_user: Actor = Depends(ge
                     with Pyro5.client.Proxy(f'PYRO:inboxes@{IP}:8002') as inb:
                         for i in current_user.followers:
                             act_i = node.search(i)
-                            inb.search(act_i.intbox).add(ca)
+                            inb.search(act_i.intbox).add("CreateActivity",("Create"+post.id,post.author,post.id,post.published,current_user.followers,None))
                 except:
                     raise HTTPException(
                         status_code=500, detail=f"An error has occurred")
@@ -262,17 +271,26 @@ async def create_post(content: str, reply: str, current_user: Actor = Depends(ge
     return 'success'
 
 
-@app.get("/{alias}/following")
-async def get_following(current_user: Actor = Depends(get_current_user)):
-    if CACHE.is_in(f"{current_user.id}.following") and CACHE.get(f"{current_user.id}.following")[1] == current_user.following_soa:
-        return CACHE.get(f"{current_user.id}.following")[0]
+@app.get("/{alias}/followings")
+async def get_following(alias: str):
+    user=None
+    try:
+        with Pyro5.client.Proxy(f'PYRO:actors@{IP}:8002') as node:
+            user=node.search(alias)
+        
+    except:
+       raise HTTPException(
+                status_code=500, detail=f"An error has occurred")
+        
+    if user!=None and CACHE.is_in(f"{user.id}.following") and CACHE.get(f"{user.id}.following")[1] == user.following_soa:
+        return CACHE.get(f"{user.id}.following")[0]
 
     else:
         following = {}
         try:
             with Pyro5.client.Proxy(f'PYRO:actors@{IP}:8002') as node:
 
-                for i in current_user.following:
+                for i in user.following:
 
                     usr = node.search(i)
                     if usr is None:
@@ -286,25 +304,33 @@ async def get_following(current_user: Actor = Depends(get_current_user)):
             raise HTTPException(
                 status_code=500, detail=f"An error has occurred")
 
-        if CACHE.is_in(f"{current_user.id}.following"):
-            CACHE._memory[CACHE._hash(f"{current_user.id}.following")] = CacheItem(
-                [deepcopy(following), current_user.following_soa])
+        if CACHE.is_in(f"{user.id}.following"):
+            CACHE._memory[CACHE._hash(f"{user.id}.following")] = CacheItem(
+                [deepcopy(following), user.following_soa])
         else:
-            CACHE.add(key=f"{current_user.id}.following", value=[
-                      deepcopy(following), current_user.following_soa])
+            CACHE.add(key=f"{user.id}.following", value=[
+                      deepcopy(following), user.following_soa])
         return following
 
 
 @app.get("/{alias}/followers")
-async def get_followers(current_user: Actor = Depends(get_current_user)):
-    if CACHE.is_in(f"{current_user.id}.followers") and CACHE.get(f"{current_user.id}.followers")[1] == current_user.following_soa:
-        return CACHE.get(f"{current_user.id}.followers")[0]
+async def get_followers(alias: str):
+    user=None
+    try:
+        with Pyro5.client.Proxy(f'PYRO:actors@{IP}:8002') as node:
+            user=node.search(alias)
+        
+    except:
+       raise HTTPException(
+                status_code=500, detail=f"An error has occurred")
+    if user!=None and CACHE.is_in(f"{user.id}.followers") and CACHE.get(f"{user.id}.followers")[1] == user.following_soa:
+        return CACHE.get(f"{user.id}.followers")[0]
 
     else:
         followers = {}
         try:
             with Pyro5.client.Proxy(f'PYRO:actors@{IP}:8002') as node:
-                for i in current_user.followers:
+                for i in user.followers:
 
                     usr = node.search(i)
                     if usr is None:
@@ -316,23 +342,31 @@ async def get_followers(current_user: Actor = Depends(get_current_user)):
             raise HTTPException(
                 status_code=500, detail=f"An error has occurred")
 
-        if CACHE.is_in(f"{current_user.id}.followers"):
-            CACHE._memory[CACHE._hash(f"{current_user.id}.followers")] = CacheItem(
-                [deepcopy(followers), current_user.followers_soa])
+        if CACHE.is_in(f"{user.id}.followers"):
+            CACHE._memory[CACHE._hash(f"{user.id}.followers")] = CacheItem(
+                [deepcopy(followers), user.followers_soa])
         else:
-            CACHE.add(key=f"{current_user.id}.followers", value=[
-                      deepcopy(followers), current_user.followers_soa])
+            CACHE.add(key=f"{user.id}.followers", value=[
+                      deepcopy(followers), user.followers_soa])
         return followers
 
 
 @app.get("/{alias}/posts")
-async def get_posts(current_user: Actor = Depends(get_current_user)):
-    if CACHE.is_in(f"{current_user.id}.posts") and CACHE.get(f"{current_user.id}.posts")[1] == current_user.posts_soa:
-        return CACHE.get(f"{current_user.id}.posts")[0]
+async def get_posts(alias: str):
+    user=None
+    try:
+        with Pyro5.client.Proxy(f'PYRO:actors@{IP}:8002') as node:
+            user=node.search(alias)
+        
+    except:
+       raise HTTPException(
+                status_code=500, detail=f"An error has occurred")
+    if user!=None and CACHE.is_in(f"{user.id}.posts") and CACHE.get(f"{user.id}.posts")[1] == user.posts_soa:
+        return CACHE.get(f"{user.id}.posts")[0]
     posts = []
     try:
         with Pyro5.client.Proxy(f'PYRO:outboxes@{IP}:8002') as node:
-            usr_ob = node.search(current_user.outbox)
+            usr_ob = node.search(user.outbox)
 
             with Pyro5.client.Proxy(f'PYRO:posts@{IP}:8002') as post_dht:
                 for i in usr_ob.items:
@@ -344,24 +378,32 @@ async def get_posts(current_user: Actor = Depends(get_current_user)):
     except:
         raise HTTPException(status_code=500, detail=f"An error has occurred")
 
-    if CACHE.is_in(f"{current_user.id}.posts"):
-        CACHE._memory[CACHE._hash(f"{current_user.id}.posts")] = CacheItem(
-            [deepcopy(posts), current_user.posts_soa])
+    if CACHE.is_in(f"{user.id}.posts"):
+        CACHE._memory[CACHE._hash(f"{user.id}.posts")] = CacheItem(
+            [deepcopy(posts), user.posts_soa])
     else:
-        CACHE.add(key=f"{current_user.id}.posts", value=[
-                  deepcopy(posts), current_user.posts_soa])
+        CACHE.add(key=f"{user.id}.posts", value=[
+                  deepcopy(posts), user.posts_soa])
 
     return posts
 
 
 @app.get("/{alias}/likes")
-async def get_likes(current_user: Actor = Depends(get_current_user)):
-    if CACHE.is_in(f"{current_user.id}.likes") and CACHE.get(f"{current_user.id}.likes")[1] == current_user.likes_soa:
-        return CACHE.get(f"{current_user.id}.likes")[0]
+async def get_likes(alias: str):
+    user=None
+    try:
+        with Pyro5.client.Proxy(f'PYRO:actors@{IP}:8002') as node:
+            user=node.search(alias)
+        
+    except:
+       raise HTTPException(
+                status_code=500, detail=f"An error has occurred")
+    if user!=None and CACHE.is_in(f"{user.id}.likes") and CACHE.get(f"{user.id}.likes")[1] == user.likes_soa:
+        return CACHE.get(f"{user.id}.likes")[0]
     likes = []
     try:
         with Pyro5.client.Proxy(f'PYRO:outboxes@{IP}:8002') as node:
-            usr_ob = node.search(current_user.outbox)
+            usr_ob = node.search(user.outbox)
 
             with Pyro5.client.Proxy(f'PYRO:posts@{IP}:8002') as post_dht:
                 for i in usr_ob.items:
@@ -370,23 +412,23 @@ async def get_likes(current_user: Actor = Depends(get_current_user)):
     except:
         raise HTTPException(status_code=500, detail=f"An error has occurred")
 
-    if CACHE.is_in(f"{current_user.id}.likes"):
-        CACHE._memory[CACHE._hash(f"{current_user.id}.likes")] = CacheItem(
-            [deepcopy(likes), current_user.likes_soa])
+    if CACHE.is_in(f"{user.id}.likes"):
+        CACHE._memory[CACHE._hash(f"{user.id}.likes")] = CacheItem(
+            [deepcopy(likes), user.likes_soa])
     else:
-        CACHE.add(key=f"{current_user.id}.likes", value=[
-                  deepcopy(likes), current_user.likes_soa])
+        CACHE.add(key=f"{user.id}.likes", value=[
+                  deepcopy(likes), user.likes_soa])
 
     return likes
 
 
-@app.put("/{alias}/{post_id}/like")
+@app.put("/me/like/{post_id}")
 async def like(post_id: str, current_user: Actor = Depends(get_current_user)):
     try:
 
         ca = LikeActivity("Like", current_user, post_id)
         with Pyro5.client.Proxy(f'PYRO:outboxes@{IP}:8002') as node:
-            node.search(current_user.outbox).add(ca)
+            node.search(current_user.outbox).add("LikeActivity",("Like", current_user, post_id))
 
         with Pyro5.client.Proxy(f'PYRO:posts@{IP}:8002') as node:
             p = node.search(post_id)
@@ -401,26 +443,29 @@ async def like(post_id: str, current_user: Actor = Depends(get_current_user)):
     return 'success'
 
 
-@app.put("/{alias}/{post_id}/share_post")
+@app.put("/me/share/{post_id}")
 async def share_post(content: str, share_post: str, current_user: Actor = Depends(get_current_user)):
     try:
         moment = datetime.now()
         post = Post(current_user.id+str(moment),
                     current_user.id, content, None, moment)
         with Pyro5.client.Proxy(f'PYRO:posts@{IP}:8002') as node:
-            node.add(post)
+            node.add("Post",(current_user.id+str(moment),
+                    current_user.id, content, None, moment))
 
         sa = ShareActivity("Share"+current_user.id +
                            str(moment), post.id, share_post)
         with Pyro5.client.Proxy(f'PYRO:outboxes@{IP}:8002') as node:
-            node.search(current_user.outbox).add(sa)
+            node.search(current_user.outbox).add( "ShareActivity",("Share"+current_user.id +
+                           str(moment), post.id, share_post))
 
         with Pyro5.client.Proxy(f'PYRO:actors@{IP}:8002') as node:
             for i in current_user.followers:
                 act_i = node.search(i)
                 try:
                     with Pyro5.client.Proxy(f'PYRO:inboxes@{IP}:8002') as inb:
-                        inb.search(act_i.inbox).add(sa)
+                        inb.search(act_i.inbox).add("ShareActivity",("Share"+current_user.id +
+                           str(moment), post.id, share_post))
                         current_user.posts_soa += 1
                 except:
                     raise HTTPException(
@@ -441,7 +486,7 @@ async def share_post(content: str, share_post: str, current_user: Actor = Depend
     return 'success'
 
 
-@app.delete("/{alias}/{post_id}/delete_post")
+@app.delete("/me/delete_post/{post_id}")
 async def delete_post(post_id: str, current_user: Actor = Depends(get_current_user)):
     try:
         with Pyro5.client.Proxy(f'PYRO:posts@{IP}:8002') as node:
@@ -454,14 +499,14 @@ async def delete_post(post_id: str, current_user: Actor = Depends(get_current_us
         with Pyro5.client.Proxy(f'PYRO:outboxes@{IP}:8002') as node:
             ra = DeleteActivity('Delete'+post_id, post_id)
             current_user.posts_soa += 1
-            node.add(ra)
+            node.add("DeleteActivity",('Delete'+post_id, post_id))
     except:
         raise HTTPException(status_code=500, detail=f"An error has occurred")
     current_user.info["posts"]-=1
     return 'success'
 
 
-@app.post("/{alias}/{user_id}/follow")
+@app.post("/me/follow/{user_id}")
 async def follow(user_id, current_user: Actor = Depends(get_current_user)):
     current_user.followin[user_id] = user_id
     current_user.followin_soa += 1
@@ -472,7 +517,7 @@ async def follow(user_id, current_user: Actor = Depends(get_current_user)):
         try:
             with Pyro5.client.Proxy(f'PYRO:outboxes@{IP}:8002') as fol:
                 fol.search(current_user.outbox).add(
-                    FollowActivity('Follow'+user_id, user_id))
+                    "FollowActivity",('Follow'+user_id, user_id))
                 user.followers[current_user.id] = current_user.id
                 user.followers_sao += 1
         except:
@@ -485,7 +530,7 @@ async def follow(user_id, current_user: Actor = Depends(get_current_user)):
     return 'success'
 
 
-@app.delete("/{alias}/{user_id}/unfollow")
+@app.delete("/me/unfollow/{user_id}")
 async def unfollow(user_id, current_user: Actor = Depends(get_current_user)):
     del current_user.following[user_id]
     current_user.followin_soa += 1
@@ -498,7 +543,7 @@ async def unfollow(user_id, current_user: Actor = Depends(get_current_user)):
             try:
                 with Pyro5.client.Proxy(f'PYRO:outboxes@{IP}:8002') as fol:
                     fol.search(current_user.outbox).add(
-                        UnfollowActivity('Unfollow'+user_id, user_id))
+                        "UnfollowActivity",('Unfollow'+user_id, user_id))
             except:
                 raise HTTPException(
                     status_code=500, detail=f"An error has occurred")
@@ -508,7 +553,7 @@ async def unfollow(user_id, current_user: Actor = Depends(get_current_user)):
         
     return 'success'   
 
-@app.post("/{alias}/preferences")
+@app.post("/me/preferences")
 async def set_preferences(preferences:list,current_user: Actor = Depends(get_current_user)):
     pref=[0 for i in range(10)]
     if len(preferences)>0:
@@ -529,7 +574,7 @@ async def set_preferences(preferences:list,current_user: Actor = Depends(get_cur
     return 'succes'
 
 
-@app.put("/{alias}/{post_id}/unlike")
+@app.put("/me/unlike/{post_id}")
 async def unlike(post_id: str, current_user: Actor = Depends(get_current_user)):
     try:
         with Pyro5.client.Proxy(f'PYRO:outboxes@{IP}:8002') as node:
@@ -550,6 +595,7 @@ async def unlike(post_id: str, current_user: Actor = Depends(get_current_user)):
     
     
 @app.get("/{alias}/info")
+<<<<<<< HEAD
 def get_info(alias: str):
     with Pyro5.client.Proxy(f'PYRO:actors@{IP}:8002') as node:
         actor = node.search(alias)
@@ -563,9 +609,19 @@ def get_info(alias: str):
             info["following"]=len(actor.following)
             
             return info
+=======
+async def get_user_info(current_user: Actor = Depends(get_current_user)):
+    info={}
+    info["user_name"]=current_user.user_name
+    info["alias"]=current_user.alias
+    info["followers"]=len(current_user.followers)
+    info["following"]=len(current_user.following)
+    
+    return info
+>>>>>>> 19858a2419906c8b644fc782774104aa68042736
 
-@app.get("/{post}/get_shared_by")
-async def get_info(post_id:str):
+@app.get("/{post_id}/get_shared_by")
+async def get_shared_info(post_id:str):
     try:
         with Pyro5.client.Proxy(f'PYRO:posts@{IP}:8002') as node:
             sp = node.search(share_post)
@@ -576,8 +632,8 @@ async def get_info(post_id:str):
         raise HTTPException(
                 status_code=500, detail=f"An error has occurred")
         
-@app.get("/{post}/get_likes")
-async def get_info(post_id:str):
+@app.get("/{post_id}/get_likes")
+async def get_likes_info(post_id:str):
     try:
         with Pyro5.client.Proxy(f'PYRO:posts@{IP}:8002') as node:
             sp = node.search(share_post)
@@ -588,8 +644,8 @@ async def get_info(post_id:str):
         raise HTTPException(
                 status_code=500, detail=f"An error has occurred")
         
-@app.get("/{post}/get_replies")
-async def get_info(post_id:str):
+@app.get("/{post_id}/get_replies")
+async def get_replies_info(post_id:str):
     try:
         with Pyro5.client.Proxy(f'PYRO:posts@{IP}:8002') as node:
             sp = node.search(share_post)

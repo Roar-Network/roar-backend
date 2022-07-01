@@ -17,8 +17,8 @@ class Actor(RObject):
         self._user_name : str = user_name
         self._hashed_password : str = hashed_password
         self._most_liked=[None]*10
-        self.following_soa=0
-        self.followers_soa=0
+        self._following_soa=0
+        self._followers_soa=0
         self.likes_soa=0
         self.posts_soa=0
         self.a1=a1
@@ -54,7 +54,22 @@ class Actor(RObject):
         except Exception as e:
             print('Error creando liked' + str(e))
 
-        
+    @property
+    def following_soa(self):
+        return self._following_soa
+
+    @following_soa.setter
+    def following_soa(self, value: int):
+        self._following_soa = value
+
+    @property
+    def followers_soa(self):
+        return self._followers_soa
+
+    @followers_soa.setter
+    def followers_soa(self, value: int):
+        self._followers_soa = value
+
     @property
     def inbox(self):
         return self._inbox

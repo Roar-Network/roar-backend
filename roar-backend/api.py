@@ -68,7 +68,7 @@ app = FastAPI()
 # NEW
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://0.0.0.0:32020"],
+    allow_origins=["http://0.0.0.0:32020", "http://localhost:32020", "http://localhost:4200", "http://0.0.0.0:4200"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -135,6 +135,10 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         raise credentials_exception
     return user
 
+@app.head("/")
+def root():
+    return "OK"
+
 @app.get("/system_network")
 def get_system_network():
     with Pyro5.client.Proxy(f'PYRO:admin@{IP}:8002') as node:
@@ -186,6 +190,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 
 @app.put("/create_user")
 def create_user(username: str, alias: str, password: str, a1: str, a2: str):
+    # TODO: decrypt password from frontend
     try:
         print('connecting')
         with Pyro5.client.Proxy(f'PYRO:actors@{IP}:8002') as node:
@@ -545,14 +550,19 @@ async def unlike(post_id: str, current_user: Actor = Depends(get_current_user)):
     
     
 @app.get("/{alias}/info")
-async def get_info(current_user: Actor = Depends(get_current_user)):
-    info={}
-    info["user_name"]=current_user.user_name
-    info["alias"]=current_user.alias
-    info["followers"]=len(current_user.followers)
-    info["following"]=len(current_user.following)
-    
-    return info
+def get_info(alias: str):
+    with Pyro5.client.Proxy(f'PYRO:actors@{IP}:8002') as node:
+        actor = node.search(alias)
+        if actor is None:
+            raise HTTPException(status_code=404, detail=f"Actor not found")
+        else:
+            info={}
+            info["username"]=actor.user_name
+            info["alias"]=actor.alias
+            info["followers"]=len(actor.followers)
+            info["following"]=len(actor.following)
+            
+            return info
 
 @app.get("/{post}/get_shared_by")
 async def get_info(post_id:str):

@@ -10,8 +10,8 @@ class Actor(RObject):
         super().__init__(alias, 'Actor')
         self._inbox : str = f'{alias}/inbox'
         self._outbox : str = f'{alias}/outbox'
-        self._following  = {}
-        self._followers = {}
+        self._following  = set()
+        self._followers = set()
         self._liked : str = f'{alias}/liked'
         self._user_name : str = user_name
         self._hashed_password : str = hashed_password

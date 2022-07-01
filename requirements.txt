@@ -10,3 +10,5 @@ fasttext==0.9.2
 nltk==3.7
 contractions==0.1.72
 python-multipart==0.0.5
+Crypto==1.4.1
+

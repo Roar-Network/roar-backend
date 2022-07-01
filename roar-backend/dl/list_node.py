@@ -210,3 +210,18 @@ class ListNode(RObject):
         type_instance=DICT_STR_TYPE[type_class]
         item=type_instance(*args)
         self.predecessor_objects.appendleft(item)
+    
+    def remove(self,id):
+        for i in self.objects:
+            if i.id==id:
+                self.objects.remove(i)
+        try:
+            with Pyro5.client.Proxy(f"PYRO:{self.successor}") as successor:
+                successor.remove_predecessor_objects(id)
+        except:
+            print('Error eliminando en sucesor')
+
+    def remove_predecessor_objecs(self,id):
+        for i in self.objects:
+            if i.id==id:
+                self.predecessor_objects.remove(i)

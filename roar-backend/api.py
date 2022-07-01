@@ -52,6 +52,7 @@ SECRET_KEY = "97af2450780e8090d64696b529c104c1aadbc356ecbed48feb4e2b7db4b42622"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 CACHE = Cache(512)
+MAX_SAVE=2048
 IP: str = sck.gethostbyname(sck.gethostname())
 
 def decrypt(message:str)->str:
@@ -238,6 +239,7 @@ async def create_post(content: str, reply: str, current_user: Actor = Depends(ge
             node.search(current_user.outbox).add("CreateActivity",("Create"+post.id,post.author,post.id,post.published,current_user.followers,None))
 
         current_user.posts_soa += 1
+        current_user.posts_soa %= MAX_SAVE
         
         if reply is None:
             post.cat_label=CLASSIFIER.predict(content)
@@ -434,7 +436,8 @@ async def like(post_id: str, current_user: Actor = Depends(get_current_user)):
             p = node.search(post_id)
             p.like(current_user.id)
 
-        current_user.posts_soa += 1
+        current_user.likes_soa += 1
+        current_user.likes_soa %= MAX_SAVE
 
     except:
         raise HTTPException(status_code=500, detail=f"An error has occurred")
@@ -467,6 +470,7 @@ async def share_post(content: str, share_post: str, current_user: Actor = Depend
                         inb.search(act_i.inbox).add("ShareActivity",("Share"+current_user.id +
                            str(moment), post.id, share_post))
                         current_user.posts_soa += 1
+                        current_user.posts_soa %= MAX_SAVE
                 except:
                     raise HTTPException(
                         status_code=500, detail=f"An error has occurred")
@@ -499,6 +503,7 @@ async def delete_post(post_id: str, current_user: Actor = Depends(get_current_us
         with Pyro5.client.Proxy(f'PYRO:outboxes@{IP}:8002') as node:
             ra = DeleteActivity('Delete'+post_id, post_id)
             current_user.posts_soa += 1
+            current_user.posts_soa %= MAX_SAVE
             node.add("DeleteActivity",('Delete'+post_id, post_id))
     except:
         raise HTTPException(status_code=500, detail=f"An error has occurred")
@@ -508,8 +513,9 @@ async def delete_post(post_id: str, current_user: Actor = Depends(get_current_us
 
 @app.post("/me/follow/{user_id}")
 async def follow(user_id, current_user: Actor = Depends(get_current_user)):
-    current_user.followin[user_id] = user_id
-    current_user.followin_soa += 1
+    current_user.following.add(user_id) 
+    current_user.following_soa += 1
+    current_user.following_soa %= MAX_SAVE
     try:
         with Pyro5.client.Proxy(f'PYRO:actors@{IP}:8002') as node:
             user = node.search(user_id)
@@ -518,8 +524,9 @@ async def follow(user_id, current_user: Actor = Depends(get_current_user)):
             with Pyro5.client.Proxy(f'PYRO:outboxes@{IP}:8002') as fol:
                 fol.search(current_user.outbox).add(
                     "FollowActivity",('Follow'+user_id, user_id))
-                user.followers[current_user.id] = current_user.id
-                user.followers_sao += 1
+                user.followers.add(current_user.id)
+                user.followers_soa += 1
+                user.followers_soa %= MAX_SAVE
         except:
             raise HTTPException(
                 status_code=500, detail=f"An error has occurred")
@@ -532,13 +539,15 @@ async def follow(user_id, current_user: Actor = Depends(get_current_user)):
 
 @app.delete("/me/unfollow/{user_id}")
 async def unfollow(user_id, current_user: Actor = Depends(get_current_user)):
-    del current_user.following[user_id]
-    current_user.followin_soa += 1
+    current_user.following.remove(user_id)
+    current_user.following_soa += 1
+    current_user.following_soa %= MAX_SAVE
     try:
         with Pyro5.client.Proxy(f'PYRO:actors@{IP}:8002') as node:
             user = node.search(user_id)
-            del user.followers[current_user.id]
+            user.followers.remove(current_user.id)
             user.followers_soa += 1
+            user.followers_soa %= MAX_SAVE
 
             try:
                 with Pyro5.client.Proxy(f'PYRO:outboxes@{IP}:8002') as fol:
@@ -589,6 +598,7 @@ async def unlike(post_id: str, current_user: Actor = Depends(get_current_user)):
             p.unlike(current_user.id)
 
         current_user.posts_soa += 1
+        current_user.posts_soa %= MAX_SAVE
 
     except:
         raise HTTPException(status_code=500, detail=f"An error has occurred")

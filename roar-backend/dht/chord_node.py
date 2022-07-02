@@ -261,12 +261,20 @@ class ChordNode(RObject):
         if node is None:
             raise Exception("Error search")
         elif node == self.id:
-            return self.objects[id] if id in self.objects else None
+            item = self.objects[id] if id in self.objects else None
+            return item
         try:
+            #print("hear=",node)
             with Pyro5.client.Proxy('PYRO:'+node) as nd:
-                return nd.objects[id] if id in nd.objects else None
-        except:
-            print('Error search')
+                print(nd.objects)
+                item=nd.give_item(id)
+                print(item.id)
+                return item
+        except Exception as e:
+            print(str(e))
+
+    def give_item(self,id):
+        return self.objects[id] if id in self.objects else None
 
     def add_item(self, type_class, args):
         type_instance = DICT_STR_TYPE[type_class]
@@ -284,6 +292,8 @@ class ChordNode(RObject):
         node = self.find_successor(key)
         if node is None:
             raise Exception("Error add")
+        elif node==self.id:
+            self.add_item(type_class,args)
         try:
             with Pyro5.client.Proxy('PYRO:'+node) as nd:
                 nd.add_item(type_class, args)

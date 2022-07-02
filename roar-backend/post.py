@@ -1,7 +1,10 @@
 from .objects.robject import RObject
 from .actor import Actor
 from datetime import datetime
+import Pyro5.server
 
+
+@Pyro5.server.expose
 class Post(RObject):
     def __init__(self, id:str, author:str, content:str, reply:str, published: datetime):
         super().__init__(id,"Post")
@@ -10,7 +13,7 @@ class Post(RObject):
         self._published=published
         self._reply = reply
         self._likes=set()
-        self._shared=[]
+        self._shared=set()
         self._replies=set()
         self._info={}
         self._info["likes"]=0
@@ -41,16 +44,35 @@ class Post(RObject):
     def info(self):
         return self._info
     
-    def like(self,alias:str):
-        self._likes.add(alias) 
+    def like(self, alias: str, notify_change: bool = True):
+        self._likes.add(alias)
+        if notify_change:
+            self.change(self.id, "like", (alias, False)) 
     
         
-    def unlike(self,alias:str):
+    def unlike(self, alias: str, notify_change: bool = True):
         try: 
             self._likes.remove(alias)
+            if notify_change:
+                self.change(self.id, "unlike", (alias, False))
         except: 
             pass
         
+    def add_shared(self, id_obj, notify_change: bool = True):
+        self._shared.add(id_obj)
+        if notify_change:
+            self.change(self.id, "add_shared", (id_obj, False))
+
+    def add_reply(self, id_obj, notify_change: bool = True):
+        self._replies.add(id_obj)
+        if notify_change:
+            self.change(self.id, "add_reply", (id_obj, False))
+
+    def remove_reply(self, id_obj, notify_change: bool = True):
+        self._replies.remove(id_obj)
+        if notify_change:
+            self.change(self.id, "remove_reply", (id_obj, False))
+
     @property
     def likes_soa(self):
         return self._likes_soa

@@ -16,6 +16,7 @@ DICT_STR_TYPE={
     'ShareActivity': ShareActivity,
     'DeleteActivity': DeleteActivity,
     'UnfollowActivity': UnfollowActivity,
+    'UnlikeActivity': UnlikeActivity,
     'Post' : Post
 }
 

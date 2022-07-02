@@ -43,9 +43,14 @@ class LikeActivity(Activity):
         self.obj=obj
         self.actor=actor
 
+class UnlikeActivity(Activity):
+     def __init__(self, id: str, actor:str, obj: str) -> None:
+        super().__init__(id, 'UnlikeActivity')
+        self.obj=obj
+        self.actor=actor
+
 @Pyro5.server.expose
 class ShareActivity(Activity):
-    def __init__(self, id: str, obj: str, obj_share: str) -> None:
+    def __init__(self, id: str, obj_share: str) -> None:
         super().__init__(id, 'ShareActivity')
-        self.obj = obj        
         self.obj_share = obj_share

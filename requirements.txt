@@ -13,3 +13,4 @@ python-multipart==0.0.5
 Crypto==1.4.1
 pycrypto==3.14.1
 pycryptodome==3.15.0
+pyEventHook==0.0.1

@@ -233,7 +233,7 @@ async def create_post(content: str, reply: str = None, current_user: Actor = Dep
         post = Post(current_user.id+str(moment),current_user.id, content, reply, moment)
         
         #ca = CreateActivity("Create"+post.id,post.author,post.id,post.published,current_user.followers,None)
-
+    
         with Pyro5.client.Proxy(f'PYRO:posts@{IP}:8002') as node:
             node.add("Post",(current_user.id+str(moment),current_user.id, content, reply, moment))
 
@@ -250,7 +250,9 @@ async def create_post(content: str, reply: str = None, current_user: Actor = Dep
             try:
                 with Pyro5.client.Proxy(f'PYRO:posts@{IP}:8002') as node:
                     rp = node.search(reply)
-                    rp._replies.append(post)
+                    rp.replies.app(post)
+                    post.replies_soa += 1
+                    post.replies_soa %= MAX_SAVE
                 
             except:
                 raise HTTPException(

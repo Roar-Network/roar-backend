@@ -515,9 +515,6 @@ async def delete_post(post_id: str, current_user: Actor = Depends(get_current_us
 
 @app.post("/me/follow/{user_id}")
 async def follow(user_id, current_user: Actor = Depends(get_current_user)):
-    current_user.following.add(user_id) 
-    current_user.following_soa += 1
-    current_user.following_soa %= MAX_SAVE
     try:
         with Pyro5.client.Proxy(f'PYRO:actors@{IP}:8002') as node:
             user = node.search(user_id)
@@ -529,6 +526,9 @@ async def follow(user_id, current_user: Actor = Depends(get_current_user)):
                 user.followers.add(current_user.id)
                 user.followers_soa += 1
                 user.followers_soa %= MAX_SAVE
+            current_user.following.add(user_id) 
+            current_user.following_soa += 1
+            current_user.following_soa %= MAX_SAVE
         except:
             raise HTTPException(
                 status_code=500, detail=f"An error has occurred")

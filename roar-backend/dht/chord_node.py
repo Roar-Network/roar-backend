@@ -1,3 +1,4 @@
+from copy import deepcopy
 from ..objects.robject import RObject
 import hashlib
 import Pyro5.server
@@ -175,6 +176,7 @@ class ChordNode(RObject):
             other_node.id
         except:
             print('Error notify other error')
+            return
         
         if self.predecessor is not None:
             predecessor_key=int(hashlib.sha1(self.predecessor.encode('utf8')).hexdigest(),base=16)
@@ -182,8 +184,9 @@ class ChordNode(RObject):
         if self.predecessor is None or self.between(other_node.key,predecessor_key,self.key):
             self.predecessor = other
             for k in self.objects:
-                if k < other_node.key:
-                    other_node.objects[k]=self.objects[k]
+                key=int(hashlib.sha1(k.encode('utf8')).hexdigest(),base=16)
+                if self.between(key,self.key,other_node.key):
+                    other_node.copy(self.objects[k])
                     del self.objects[k]
             self._predecessor_objects = other_node.objects.copy()
 
@@ -310,3 +313,6 @@ class ChordNode(RObject):
             print('Error del')
 
         return True
+
+    def copy(self,item):
+        self.objects[item.id]=deepcopy(item)

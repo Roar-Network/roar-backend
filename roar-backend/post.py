@@ -9,13 +9,16 @@ class Post(RObject):
         self._content=content
         self._published=published
         self._reply = reply
-        self._likes={}
+        self._likes=set()
         self._shared=[]
-        self._replies=[]
+        self._replies=set()
         self._info={}
         self._info["likes"]=0
         self._info["shares"]=0
         self._info["reply"]=0
+        _likes_soa=0
+        _shared_soa=0
+        _replies_soa=0
         cat_label=-1
 
     @property
@@ -39,11 +42,36 @@ class Post(RObject):
         return self._info
     
     def like(self,alias:str):
-        self._likes[alias]=alias    
-        self.likes+=1
+        self._likes.add(alias) 
+    
         
     def unlike(self,alias:str):
-        self._likes.remove(alias)
-        self.likes-=1
+        try: 
+            self._likes.remove(alias)
+        except: 
+            pass
         
+    @property
+    def likes_soa(self):
+        return self._likes_soa
+    
+    @property
+    def shared_soa(self):
+        return self._shared_soa
+    
+    @property
+    def replies_soa(self):
+        return self._replies_soa
+    
+    @property
+    def likes(self):
+        return self._likes
+    
+    @property
+    def shared(self):
+        return self._shared
+    
+    @property
+    def replies(self):
+        return self._replies
     

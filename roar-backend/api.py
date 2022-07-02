@@ -21,9 +21,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from datetime import datetime, timedelta
-from Crypto.Cipher import PKCS1_OAEP
-from Crypto.PublicKey import RSA
-from Crypto.Hash import SHA256
+from Cryptodome.Cipher import PKCS1_OAEP
+from Cryptodome.PublicKey import RSA
+from Cryptodome.Hash import SHA256
 from base64 import b64decode
 from rsa import decrypt
 
@@ -55,10 +55,11 @@ CACHE = Cache(512)
 MAX_SAVE=2048
 IP: str = sck.gethostbyname(sck.gethostname())
 
-def decrypt(message:str)->str:
-    key=RSA.import_key('-----BEGIN RSA PRIVATE KEY-----\nMIICXAIBAAKBgQCyiZht8PYKDNR0VNQKzmBD1s44BSsEKTjQyyoFZFZqU0oGmpP3\nht6wqVMV1VCyCNf9E3s3tzNgD5IkDg6wDC4rculcx2yQ7GsfSnU49/+yu2WoBF5J\nHzDcsWEJe9KmeNTp988JxeBjxtmORGLCfFLYDxiOU7VVPCo98nm16PkSmQIDAQAB\nAoGAGVeTleNyoRmSHJMf6ArEOkzmx6fgI76QLH7yD4LfC0eYRdiyMRvpRy05uGsn\ngaXktq0Ju+5asgNzzH9cUVvhP5dAAaTIeBB0NcwFDNO7KKwd6azwOKX7vjR8XaD3\nqAItIVwN7cvTZ08qelxuFlg+7fiUI1Ij45lXv9+oQhYt0BMCQQC4twFbmXBzoGrT\nQ+pWNWXSSE2OKAOck6UCOaLtZ/Gsnv/DjOG41zPhFQQX7UsqDJvSbvrAk/BH4aGX\n8LmN3Xh/AkEA93BK6lCesSvzr27RQl3nYjY5Eirx4voCDmIVL5AlrGh0Eliy8tFt\nzPqBNHDgZTbG8t2scdcAqrbnI/JS2fKo5wJBALgseKUdc9tGSt1FbWTxrwmhX/rq\n+Nbo+/EhCMvQBU9J5djUIshLgwXdD4zP5E8T7VY/o7Pajg0N8zJtKoZCGf8CQDWq\nbzUewyxeAf48pLomL7cHV51vHwNBggyojTvBocog5XvNLRKpBY19j2RWTvTkyoWG\nOo5+OTDNdpg/SGTo0mUCQAM5UVtFvO7wNId/RZuuOBc+176LWvuPHnbRq1BRr7M9\nNMYIfsf1q0hBNCKEMO8SUZ+dNPkNdqtgambqZUw9Wn0=\n-----END RSA PRIVATE KEY-----')
-    cipher=PKCS1_OAEP.new(key,hashAlgo=SHA256)
-    return cipher.decrypt(b64decode(message))
+key=RSA.import_key('-----BEGIN RSA PRIVATE KEY-----\nMIICXAIBAAKBgQCyiZht8PYKDNR0VNQKzmBD1s44BSsEKTjQyyoFZFZqU0oGmpP3\nht6wqVMV1VCyCNf9E3s3tzNgD5IkDg6wDC4rculcx2yQ7GsfSnU49/+yu2WoBF5J\nHzDcsWEJe9KmeNTp988JxeBjxtmORGLCfFLYDxiOU7VVPCo98nm16PkSmQIDAQAB\nAoGAGVeTleNyoRmSHJMf6ArEOkzmx6fgI76QLH7yD4LfC0eYRdiyMRvpRy05uGsn\ngaXktq0Ju+5asgNzzH9cUVvhP5dAAaTIeBB0NcwFDNO7KKwd6azwOKX7vjR8XaD3\nqAItIVwN7cvTZ08qelxuFlg+7fiUI1Ij45lXv9+oQhYt0BMCQQC4twFbmXBzoGrT\nQ+pWNWXSSE2OKAOck6UCOaLtZ/Gsnv/DjOG41zPhFQQX7UsqDJvSbvrAk/BH4aGX\n8LmN3Xh/AkEA93BK6lCesSvzr27RQl3nYjY5Eirx4voCDmIVL5AlrGh0Eliy8tFt\nzPqBNHDgZTbG8t2scdcAqrbnI/JS2fKo5wJBALgseKUdc9tGSt1FbWTxrwmhX/rq\n+Nbo+/EhCMvQBU9J5djUIshLgwXdD4zP5E8T7VY/o7Pajg0N8zJtKoZCGf8CQDWq\nbzUewyxeAf48pLomL7cHV51vHwNBggyojTvBocog5XvNLRKpBY19j2RWTvTkyoWG\nOo5+OTDNdpg/SGTo0mUCQAM5UVtFvO7wNId/RZuuOBc+176LWvuPHnbRq1BRr7M9\nNMYIfsf1q0hBNCKEMO8SUZ+dNPkNdqtgambqZUw9Wn0=\n-----END RSA PRIVATE KEY-----')
+cipher=PKCS1_OAEP.new(key,hashAlgo=SHA256)
+
+def my_decrypt(message:str)->str:
+    return cipher.decrypt(b64decode(message + str(b'==')))
     
 class Token(BaseModel):
     access_token: str
@@ -161,9 +162,9 @@ def forgot_password(alias:str,a1:str,a2:str,password:str):
             user=node.search(alias)
             if user is None: raise HTTPException(status_code=404, detail=f"Username {alias} not found")
             
-            _a1=get_password_hash(decrypt(a1))
-            _a2=get_password_hash(decrypt(a2))
-            _password=get_password_hash(decrypt(password))
+            _a1=get_password_hash(my_decrypt(a1))
+            _a2=get_password_hash(my_decrypt(a2))
+            _password=get_password_hash(my_decrypt(password))
             
             if user.forgot_password(_password,_a1,_a2):
                 return "success"
@@ -175,15 +176,16 @@ def forgot_password(alias:str,a1:str,a2:str,password:str):
 
 @app.post("/token", response_model=Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
+    d_password = my_decrypt(form_data.password)
     user = None
     try:
         with Pyro5.client.Proxy(f'PYRO:actors@{IP}:8002') as node:
             user = authenticate_user(
-                node, form_data.username, form_data.password)
+                node, form_data.username, d_password)
     except:
         print('Error accediendo a usuarios')
-
-    if user is None:
+    print(user)
+    if user is None or not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect alias or password",
@@ -200,16 +202,16 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 
 @app.put("/create_user")
 def create_user(username: str, alias: str, password: str, a1: str, a2: str):
-    # TODO: decrypt password from frontend
     try:
         print('connecting')
         with Pyro5.client.Proxy(f'PYRO:actors@{IP}:8002') as node:
             print("connected")
-            if node.search(alias) is None:
+            item= node.search(alias)
+            if item is None:
                 print("not found")
-                node.add("Actor",(alias, username, get_password_hash(decrypt(password)), get_password_hash(decrypt(a1)), get_password_hash(decrypt(a2))))
-
+                node.add("Actor",(alias, username, get_password_hash(my_decrypt(password)), get_password_hash(my_decrypt(a1)), get_password_hash(my_decrypt(a2))))
             else:
+                print(item.id)
                 raise HTTPException(
                     status_code=400, detail=f"User {alias} already exist")
 
@@ -220,12 +222,12 @@ def create_user(username: str, alias: str, password: str, a1: str, a2: str):
 
 @app.post("/me/change_password")
 async def change_password(password: str, current_user: Actor = Depends(get_current_user)):
-    current_user.hashed_password = get_password_hash(password=decrypt(password))
+    current_user.hashed_password = get_password_hash(password=my_decrypt(password))
     return 'success'
 
 
 @app.post("/me/post")
-async def create_post(content: str, reply: str, current_user: Actor = Depends(get_current_user)):
+async def create_post(content: str, reply: str = None, current_user: Actor = Depends(get_current_user)):
     try:
         moment=datetime.now()
         post = Post(current_user.id+str(moment),current_user.id, content, reply, moment)
@@ -512,9 +514,6 @@ async def delete_post(post_id: str, current_user: Actor = Depends(get_current_us
 
 @app.post("/me/follow/{user_id}")
 async def follow(user_id, current_user: Actor = Depends(get_current_user)):
-    current_user.following.add(user_id) 
-    current_user.following_soa += 1
-    current_user.following_soa %= MAX_SAVE
     try:
         with Pyro5.client.Proxy(f'PYRO:actors@{IP}:8002') as node:
             user = node.search(user_id)
@@ -526,6 +525,9 @@ async def follow(user_id, current_user: Actor = Depends(get_current_user)):
                 user.followers.add(current_user.id)
                 user.followers_soa += 1
                 user.followers_soa %= MAX_SAVE
+            current_user.following.add(user_id) 
+            current_user.following_soa += 1
+            current_user.following_soa %= MAX_SAVE
         except:
             raise HTTPException(
                 status_code=500, detail=f"An error has occurred")
@@ -612,7 +614,7 @@ def get_info(alias: str):
         else:
             info={}
             info["username"]=actor.user_name
-            info["alias"]=actor.alias
+            info["alias"]=actor.id
             info["followers"]=len(actor.followers)
             info["following"]=len(actor.following)
             

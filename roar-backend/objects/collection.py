@@ -10,3 +10,7 @@ class Collection(RObject,ABC):
     @abstractmethod
     def add(self):
         ...
+
+    @abstractmethod
+    def remove(self):
+        ...

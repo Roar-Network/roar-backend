@@ -178,10 +178,8 @@ class ListCollection(Collection):
         try:
             with Pyro5.client.Proxy('PYRO:' + self.current) as node:
                 if id in node.objects_ids:
-                    for i in node.objects:
-                        if i.id==id:
-                            node.objects.remove(i)
-                            return
+                    node.remove(id)
+                    return
                 actual_node = node.predecessor
         except:
             print('Error remove')
@@ -190,10 +188,8 @@ class ListCollection(Collection):
             try:
                 with Pyro5.client.Proxy('PYRO:' + actual_node) as node:
                     if id in node.objects_ids:
-                        for i in node.objects:
-                            if i.id==id:
-                                node.objects.remove(i)
-                                return
+                        node.remove(id)
+                        return
                 actual_node = node.predecessor
             except:
                 print('Error items')

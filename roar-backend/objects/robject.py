@@ -1,7 +1,9 @@
 from abc import ABC,abstractmethod
 from datetime import datetime
-from typing import List
+from typing import List, Any
 import Pyro5.server
+from pyEventHook import Event
+
 
 class RObject(ABC):
     @abstractmethod
@@ -9,6 +11,7 @@ class RObject(ABC):
         self._id=id
         self._type=type
         self._likes={}
+        self.change: Event = Event()
 
     @Pyro5.server.expose
     @property

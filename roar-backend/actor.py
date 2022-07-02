@@ -106,7 +106,7 @@ class Actor(RObject):
         return self._most_liked
     
     @property
-    def aslias(self):
+    def alias(self):
         return self.id
     
     @property
@@ -118,3 +118,23 @@ class Actor(RObject):
         else:
             return False
             
+
+    def add_followers(self, id_obj: str, notify_change: bool = True) -> None:
+        self.followers.add(id_obj)
+        if notify_change:
+            self.change(self.alias, "add_followers", (id_obj, False))
+
+    def remove_followers(self, id_obj: str, notify_change: bool = True) -> None:
+        self.followers.remove(id_obj)
+        if notify_change:
+            self.change(self.alias, "remove_followers", (id_obj, False))
+
+    def add_followings(self, id_obj: str, notify_change: bool = True) -> None:
+        self.following.add(id_obj)
+        if notify_change:
+            self.change(self.alias, "add_followings", (id_obj, False))
+
+    def remove_followings(self, id_obj: str, notify_change: bool = True) -> None:
+        self.following.remove(id_obj)
+        if notify_change:
+            self.change(self.alias, "remove_followings", (id_obj, False))

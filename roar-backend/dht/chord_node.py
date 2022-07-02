@@ -7,7 +7,7 @@ import schedule
 from ..dl.list_collection import ListCollection
 from ..actor import Actor
 from ..post import Post
-
+from copy import deepcopy
 
 DICT_STR_TYPE={
     'ListCollection':ListCollection,
@@ -101,6 +101,21 @@ class ChordNode(RObject):
     def sucsuccessor(self, value):    
         self._sucsuccessor = value
 
+    def change_data_sucessor(self, id_obj: str, field: str, value: Tuple)->None:
+        # if sucessor is yourself, don't change anything
+        if self.successor == self.id:
+            return
+        # else change data in successor
+        try:
+            with Pyro5.client.Proxy('PYRO:' + self.successor) as successor:
+                successor.change_data(id_obj, field, value)
+        except:
+            print('Error change_data_sucessor')
+
+    def change_data(self, id_obj: str, field: str, args: Tuple) -> None:
+        if id_obj in self.predecessor_objects:
+            self.predecessor_objects[id_obj].__dict__[field](*args)
+
     def between(self,x,y,z):
         if y <= z:
             return x > y and x < z
@@ -193,10 +208,6 @@ class ChordNode(RObject):
     def fix_fingers(self):
         self.next+=1
         if self.next==160:
-            #print(self.finger)
-            #print(self.predecessor)
-            #print(self.successor)
-            #print(self.sucsuccessor)
             self.next=0
         self.finger[self.next]=self.find_successor((self.key+2**self.next)%2**160)
         

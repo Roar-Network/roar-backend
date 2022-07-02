@@ -436,13 +436,12 @@ async def like(post_id: str, current_user: Actor = Depends(get_current_user)):
             p = node.search(post_id)
             p.like(current_user.id)
 
-        current_user.likes_soa += 1
-        current_user.likes_soa %= MAX_SAVE
+        p.likes_soa += 1
+        p.likes_soa %= MAX_SAVE
 
     except:
         raise HTTPException(status_code=500, detail=f"An error has occurred")
     
-    current_user.info["likes"]+=1
     return 'success'
 
 
@@ -450,14 +449,14 @@ async def like(post_id: str, current_user: Actor = Depends(get_current_user)):
 async def share_post(content: str, share_post: str, current_user: Actor = Depends(get_current_user)):
     try:
         moment = datetime.now()
-        post = Post(current_user.id+str(moment),
-                    current_user.id, content, None, moment)
         with Pyro5.client.Proxy(f'PYRO:posts@{IP}:8002') as node:
-            node.add("Post",(current_user.id+str(moment),
-                    current_user.id, content, None, moment))
+            post=node.search(share_post)
+            post.shared.add(current_user.id)
+            post.shared_soa+=1
+            post.shared_soa%=MAX_SAVE
 
         sa = ShareActivity("Share"+current_user.id +
-                           str(moment), post.id, share_post)
+                           post.id, post.id, share_post)
         with Pyro5.client.Proxy(f'PYRO:outboxes@{IP}:8002') as node:
             node.search(current_user.outbox).add( "ShareActivity",("Share"+current_user.id +
                            str(moment), post.id, share_post))
@@ -597,8 +596,8 @@ async def unlike(post_id: str, current_user: Actor = Depends(get_current_user)):
             p=node.search(post_id)
             p.unlike(current_user.id)
 
-        current_user.posts_soa += 1
-        current_user.posts_soa %= MAX_SAVE
+            p.likes_soa += 1
+            p.likes_soa %= MAX_SAVE
 
     except:
         raise HTTPException(status_code=500, detail=f"An error has occurred")
@@ -633,26 +632,47 @@ async def get_shared_info(post_id:str):
         
 @app.get("/{post_id}/get_likes")
 async def get_likes_info(post_id:str):
+    post=None
+    
     try:
         with Pyro5.client.Proxy(f'PYRO:posts@{IP}:8002') as node:
-            sp = node.search(share_post)
-            return sp._likes
-            
+            post=node.search(post_id)
         
     except:
-        raise HTTPException(
+       raise HTTPException(
                 status_code=500, detail=f"An error has occurred")
+    
+    if post!=None and CACHE.is_in(f"{post.id}.likes") and CACHE.get(f"{post.id}.likes")[1] == post.likes_soa:
+        return CACHE.get(f"{post.id}.likes")[0]
+    
+    else:
+        CACHE.add(key=f"{post.id}.likes", value=[
+                  deepcopy(post.likes), post.likes_soa])
+        
+        return post.likes
         
 @app.get("/{post_id}/get_replies")
 async def get_replies_info(post_id:str):
+    
+    post=None
+    
     try:
         with Pyro5.client.Proxy(f'PYRO:posts@{IP}:8002') as node:
-            sp = node.search(share_post)
-            return sp._replies
-            
+            post=node.search(post_id)
         
     except:
-        raise HTTPException(
+       raise HTTPException(
                 status_code=500, detail=f"An error has occurred")
+    
+    if post!=None and CACHE.is_in(f"{post.id}.replies") and CACHE.get(f"{post.id}.replies")[1] == post.replies_soa:
+        return CACHE.get(f"{post.id}.replies")[0]
+    
+    else:
+        CACHE.add(key=f"{post.id}.replies", value=[
+                  deepcopy(post.replies), post.replies_soa])
+        
+        return post.replies 
 
-     
+
+    
+        

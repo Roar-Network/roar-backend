@@ -20,7 +20,7 @@ class Actor(RObject):
         self._followers_soa=0
         self._likes_soa=0
         self._posts_soa=0
-        self._shared_soas=0
+        self._shared_soa=0
         self.a1=a1
         self.a2=a2
         self.preferences=[]
@@ -144,11 +144,24 @@ class Actor(RObject):
     def likes_soa(self):
         return self._likes_soa
     
+    @likes_soa.setter
+    def likes_soa(self, value):
+        self._likes_soa = value
+
     @property
     def shared_soa(self):
         return self._shared_soa
     
+    @shared_soa.setter
+    def shared_soa(self, value):
+        self._shared_soa = value
+        
+
     @property
     def posts_soa(self):
         return self._posts_soa
-            
+
+    @posts_soa.setter
+    def posts_soa(self, value):
+        self._posts_soa = value
+

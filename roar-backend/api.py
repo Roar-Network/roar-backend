@@ -228,11 +228,11 @@ async def change_password(password: str, current_user: Actor = Depends(get_curre
 
 
 @app.post("/me/post")
-async def create_post(content: str, reply: str = None, current_user: Actor = Depends(get_current_user)):
+async def create_post(content: str, reply: str = "", current_user: Actor = Depends(get_current_user)):
     try:
         moment=datetime.now()
         post = Post(current_user.id+str(moment),current_user.id, content, reply, moment)
-        if reply is None:
+        if reply == "":
             # classify post
             post.cat_label=CLASSIFIER.predict(content)
         else:
@@ -245,9 +245,9 @@ async def create_post(content: str, reply: str = None, current_user: Actor = Dep
                     rp.add_reply(post.id)
                     rp.replies_soa += 1
                     rp.replies_soa %= MAX_SAVE
-            except:
+            except Exception as e:
                 raise HTTPException(
-                        status_code=500, detail=f"An error has occurred")
+                        status_code=500, detail=f"An error has occurred {e} !!!")
 
         # save new post
         with Pyro5.client.Proxy(f'PYRO:posts@{IP}:8002') as node:
@@ -265,15 +265,15 @@ async def create_post(content: str, reply: str = None, current_user: Actor = Dep
                         for i in current_user.followers:
                             act_i = node.search(i)
                             inb.search(act_i.inbox).add("CreateActivity",("Create"+post.id,post.author,post.id,post.published,current_user.followers,post.reply))
-                except:
+                except Exception as e:
                     raise HTTPException(
-                        status_code=500, detail=f"An error has occurred")
+                        status_code=500, detail=f"An error has occurred {e} ...")
         except:
             raise HTTPException(
-                status_code=500, detail=f"An error has occurred")
+                status_code=500, detail=f"An error has occurred: {e} -")
 
-    except:
-        raise HTTPException(status_code=500, detail=f"An error has occurred")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error has occurred: {e} %")
 
     return 'success'
 

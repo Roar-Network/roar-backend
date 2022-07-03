@@ -386,6 +386,39 @@ async def get_posts(alias: str):
 
     return posts
 
+@app.get("/{alias}/shared")
+async def get_shared(alias: str):
+    user=None
+    try:
+        with Pyro5.client.Proxy(f'PYRO:actors@{IP}:8002') as node:
+            user=node.search(alias)
+        
+    except:
+       raise HTTPException(
+                status_code=500, detail=f"An error has occurred")
+    if user!=None and CACHE.is_in(f"{user.id}.shared") and CACHE.get(f"{user.id}.shared")[1] == user.shared_soa:
+        return CACHE.get(f"{user.id}.shared")[0]
+    shared = []
+    try:
+        with Pyro5.client.Proxy(f'PYRO:outboxes@{IP}:8002') as node:
+            usr_ob = node.search(user.outbox)
+
+            with Pyro5.client.Proxy(f'PYRO:posts@{IP}:8002') as post_dht:
+                for i in usr_ob.items:
+                    if i.obj.type == "ShareActivity":
+                        shared.append(post_dht.search(i.obj))
+    except:
+        raise HTTPException(status_code=500, detail=f"An error has occurred")
+
+    if CACHE.is_in(f"{user.id}.posts"):
+        CACHE._memory[CACHE._hash(f"{user.id}.posts")] = CacheItem(
+            [deepcopy(shared), user.posts_soa])
+    else:
+        CACHE.add(key=f"{user.id}.posts", value=[
+                  deepcopy(shared), user.posts_soa])
+
+    return shared
+
 
 @app.get("/{alias}/likes")
 async def get_likes(alias: str):

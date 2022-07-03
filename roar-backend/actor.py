@@ -18,8 +18,9 @@ class Actor(RObject):
         self._most_liked=[None]*10
         self._following_soa=0
         self._followers_soa=0
-        self.likes_soa=0
-        self.posts_soa=0
+        self._likes_soa=0
+        self._posts_soa=0
+        self._shared_soas=0
         self.a1=a1
         self.a2=a2
         self.preferences=[]
@@ -138,3 +139,16 @@ class Actor(RObject):
         self.following.remove(id_obj)
         if notify_change:
             self.change(self.alias, "remove_followings", (id_obj, False))
+        
+    @property
+    def likes_soa(self):
+        return self._likes_soa
+    
+    @property
+    def shared_soa(self):
+        return self._shared_soa
+    
+    @property
+    def posts_soa(self):
+        return self._posts_soa
+            

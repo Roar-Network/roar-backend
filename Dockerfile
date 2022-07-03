@@ -1,5 +1,6 @@
 FROM roar/server
 
+# COPY ./nltk_data ../root/nltk_data
 WORKDIR /roar-backend
 
 ADD . ./

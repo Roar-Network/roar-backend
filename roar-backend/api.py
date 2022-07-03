@@ -228,11 +228,11 @@ async def change_password(password: str, current_user: Actor = Depends(get_curre
 
 
 @app.post("/me/post")
-async def create_post(content: str, reply: str = None, current_user: Actor = Depends(get_current_user)):
+async def create_post(content: str, reply: str = "", current_user: Actor = Depends(get_current_user)):
     try:
         moment=datetime.now()
         post = Post(current_user.id+str(moment),current_user.id, content, reply, moment)
-        if reply is None:
+        if reply == "":
             # classify post
             post.cat_label=CLASSIFIER.predict(content)
         else:
@@ -245,9 +245,9 @@ async def create_post(content: str, reply: str = None, current_user: Actor = Dep
                     rp.add_reply(post.id)
                     rp.replies_soa += 1
                     rp.replies_soa %= MAX_SAVE
-            except:
+            except Exception as e:
                 raise HTTPException(
-                        status_code=500, detail=f"An error has occurred")
+                        status_code=500, detail=f"An error has occurred {e} !!!")
 
         # save new post
         with Pyro5.client.Proxy(f'PYRO:posts@{IP}:8002') as node:
@@ -265,15 +265,15 @@ async def create_post(content: str, reply: str = None, current_user: Actor = Dep
                         for i in current_user.followers:
                             act_i = node.search(i)
                             inb.search(act_i.inbox).add("CreateActivity",("Create"+post.id,post.author,post.id,post.published,current_user.followers,post.reply))
-                except:
+                except Exception as e:
                     raise HTTPException(
-                        status_code=500, detail=f"An error has occurred")
+                        status_code=500, detail=f"An error has occurred {e} ...")
         except:
             raise HTTPException(
-                status_code=500, detail=f"An error has occurred")
+                status_code=500, detail=f"An error has occurred: {e} -")
 
-    except:
-        raise HTTPException(status_code=500, detail=f"An error has occurred")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error has occurred: {e} %")
 
     return 'success'
 
@@ -385,6 +385,39 @@ async def get_posts(alias: str):
                   deepcopy(posts), user.posts_soa])
 
     return posts
+
+@app.get("/{alias}/shares")
+async def get_shared(alias: str):
+    user=None
+    try:
+        with Pyro5.client.Proxy(f'PYRO:actors@{IP}:8002') as node:
+            user=node.search(alias)
+        
+    except:
+       raise HTTPException(
+                status_code=500, detail=f"An error has occurred")
+    if user!=None and CACHE.is_in(f"{user.id}.shared") and CACHE.get(f"{user.id}.shared")[1] == user.shared_soa:
+        return CACHE.get(f"{user.id}.shared")[0]
+    shared = []
+    try:
+        with Pyro5.client.Proxy(f'PYRO:outboxes@{IP}:8002') as node:
+            usr_ob = node.search(user.outbox)
+
+            with Pyro5.client.Proxy(f'PYRO:posts@{IP}:8002') as post_dht:
+                for i in usr_ob.items:
+                    if i.obj.type == "ShareActivity":
+                        shared.append(post_dht.search(i.obj))
+    except:
+        raise HTTPException(status_code=500, detail=f"An error has occurred")
+
+    if CACHE.is_in(f"{user.id}.posts"):
+        CACHE._memory[CACHE._hash(f"{user.id}.posts")] = CacheItem(
+            [deepcopy(shared), user.posts_soa])
+    else:
+        CACHE.add(key=f"{user.id}.posts", value=[
+                  deepcopy(shared), user.posts_soa])
+
+    return shared
 
 
 @app.get("/{alias}/likes")
@@ -618,7 +651,14 @@ async def get_shared_info(post_id:str):
             sp = node.search(share_post)
             if sp is None:
                 raise HTTPException(status_code=404, detail=f"Post not found")
-            return sp._shared
+            
+            if sp!=None and CACHE.is_in(f"{sp.id}.shared") and CACHE.get(f"{sp.id}.shared")[1] == sp.shared_soa:
+                return CACHE.get(f"{sp.id}.shared")[0]
+    
+            else:
+                CACHE.add(key=f"{sp.id}.shared", value=[
+                        deepcopy(sp.likes), sp.shared_soa])
+                return sp._shared
     except:
         raise HTTPException(
                 status_code=500, detail=f"An error has occurred")

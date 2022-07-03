@@ -411,10 +411,10 @@ async def get_shared(alias: str):
 
     if CACHE.is_in(f"{user.id}.posts"):
         CACHE._memory[CACHE._hash(f"{user.id}.posts")] = CacheItem(
-            [deepcopy(shared), user.posts_soa])
+            [deepcopy(shared), user.shared_soa])
     else:
         CACHE.add(key=f"{user.id}.posts", value=[
-                  deepcopy(shared), user.posts_soa])
+                  deepcopy(shared), user.shared_soa])
 
     return shared
 

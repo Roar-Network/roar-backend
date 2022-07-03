@@ -8,7 +8,6 @@ import schedule
 from ..dl.list_collection import ListCollection
 from ..actor import Actor
 from ..post import Post
-from copy import deepcopy
 from typing import Tuple
 import Pyro5.api
 
@@ -20,7 +19,7 @@ DICT_STR_TYPE = {
 
 DICT_STR_INS={
     'ListCollecction' : lambda : ListCollection('list',['oop']),
-    'Actor': lambda : Actor("er", "k", "lp9", "ko", "lo"),
+    'Actor': lambda : Actor("me", "k", "lp9", "ko", "lo"),
     'Post': lambda : Post("er", "k", "lp9", "ko", datetime.now())
 }
 
@@ -175,6 +174,14 @@ class ChordNode(RObject):
         #     except:
         #         print('Error join')
 
+    def get_dict(self,thing):
+        class_dict=SERIALIZER.class_to_dict(thing)
+        things_to_delete=['_change','__class__','_pyroId','_pyroDaemon']
+        for i in things_to_delete:
+            if i in class_dict:
+                del class_dict[i]
+        return class_dict
+
     def notify(self, other: str) -> None:
         other_node = None
 
@@ -191,24 +198,27 @@ class ChordNode(RObject):
 
         if self.predecessor is None or self.between(other_node.key, predecessor_key, self.key):
             self.predecessor = other
+            self.predecessor_objects.clear()
+            keys_to_delete=[]
             for k in self.objects:
                 key = int(hashlib.sha1(k.encode('utf8')).hexdigest(), base=16)
                 if (self.key > other_node.key and (key <= other_node.key or key > self.key)) or (self.key < other_node.key and(key>self.key and k<=other_node.key)):
                     # unsuscribe event
                     try:
                         self.objects[k].change -= self.change_data_sucessor
-                        class_dict=SERIALIZER.class_to_dict(self.objects[k])
-                        del class_dict['_change']
-                        del class_dict['__class__']
-                        del class_dict['_pyroId']
-                        del class_dict['_pyroDaemon']
+                        class_dict=self.get_dict(self.objects[k])
                         other_node.copy(class_dict)
+                        print("aaaa")    
                         self._pyroDaemon.unregister(self.objects[k])
-                        del self.objects[k]
+                        self.predecessor_objects[k]=self.objects[k]
+                        print("for=",self.predecessor_objects)
+                        keys_to_delete.append(k)
+                        print("bbbb")      
                     except Exception as e:
                         print(str(e))
-                    print("pase")
-            self._predecessor_objects = other_node.objects.copy()
+            for k in keys_to_delete:
+                del self.objects[k]
+            print("no_for=",self.predecessor_objects)
 
         other_node._pyroRelease()
 
@@ -247,6 +257,7 @@ class ChordNode(RObject):
             self.predecessor = None
             for item in self.predecessor_objects:
                 self.objects[item] = self.predecessor_objects[item]
+                self._pyroDaemon.register(self.objects[item])
 
     def check_successor(self):
         if self.successor == self.id:
@@ -283,8 +294,6 @@ class ChordNode(RObject):
         try:
             #print("hear=",node)
             with Pyro5.client.Proxy('PYRO:'+node) as nd:
-                print(self.objects)
-                print(nd.objects)
                 item=nd.give_item(id)
                 return item
         except Exception as e:
@@ -350,11 +359,10 @@ class ChordNode(RObject):
 
     def copy(self, class_dict):
         instance=DICT_STR_INS[class_dict['_type']]()
-        print(instance.id)
+
         for k in class_dict:
             setattr(instance,k,class_dict[k])
-        print(instance.id)
         self.objects[instance.id] = instance
-        print(self.objects)
+
         self._pyroDaemon.register(instance)
         self.change += self.change_data_sucessor

@@ -339,8 +339,8 @@ async def get_followers(alias: str):
                         raise HTTPException(status_code=404, detail=f"Username {i} not found")
                     else:
                         followers.append({"username": usr.user_name, "alias": usr.alias})
-        except:
-            raise HTTPException(status_code=500, detail=f"An error has occurred")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"An error has occurred {e} line 343")
 
         if CACHE.is_in(f"{user.id}.followers"):
             CACHE._memory[CACHE._hash(f"{user.id}.followers")] = CacheItem(
@@ -359,8 +359,8 @@ async def get_posts(alias: str):
             user=node.search(alias)
             if user is None:
                 raise HTTPException(status_code=404, detail=f"Username {alias} not found")
-    except:
-       raise HTTPException(status_code=500, detail=f"An error has occurred")
+    except Exception as e:
+       raise HTTPException(status_code=500, detail=f"An error has occurred {e} line 363")
 
     if user!=None and CACHE.is_in(f"{user.id}.posts") and CACHE.get(f"{user.id}.posts")[1] == user.posts_soa:
         return CACHE.get(f"{user.id}.posts")[0]
@@ -374,9 +374,8 @@ async def get_posts(alias: str):
                 for i in usr_ob.items:
                     if i.type == "CreateActivity":
                         posts.append(post_dht.search(i.obj))
-    except:
-        raise HTTPException(status_code=500, detail=f"An error has occurred")
-
+    except Exception as e:
+       raise HTTPException(status_code=500, detail=f"An error has occurred {e} line 378")
     if CACHE.is_in(f"{user.id}.posts"):
         CACHE._memory[CACHE._hash(f"{user.id}.posts")] = CacheItem(
             [deepcopy(posts), user.posts_soa])
@@ -407,8 +406,8 @@ async def get_shared(alias: str):
                 for i in usr_ob.items:
                     if i.obj.type == "ShareActivity":
                         shared.append(post_dht.search(i.obj))
-    except:
-        raise HTTPException(status_code=500, detail=f"An error has occurred")
+    except Exception as e:
+       raise HTTPException(status_code=500, detail=f"An error has occurred {e} line 411")
 
     if CACHE.is_in(f"{user.id}.posts"):
         CACHE._memory[CACHE._hash(f"{user.id}.posts")] = CacheItem(
@@ -428,8 +427,9 @@ async def get_likes(alias: str):
             user=node.search(alias)
             if user is None:
                 raise HTTPException(status_code=404, detail=f"Username {alias} not found")
-    except:
-       raise HTTPException(status_code=500, detail=f"An error has occurred")
+    except Exception as e:
+       raise HTTPException(status_code=500, detail=f"An error has occurred {e} line 432")
+
 
     if user!=None and CACHE.is_in(f"{user.id}.likes") and CACHE.get(f"{user.id}.likes")[1] == user.likes_soa:
         return CACHE.get(f"{user.id}.likes")[0]
@@ -443,8 +443,8 @@ async def get_likes(alias: str):
                 for i in usr_ob.items:
                     if i.type == "Like":
                         likes.append(post_dht.search(i.obj))
-    except:
-        raise HTTPException(status_code=500, detail=f"An error has occurred")
+    except Exception as e:
+       raise HTTPException(status_code=500, detail=f"An error has occurred {e} line 448")
 
     if CACHE.is_in(f"{user.id}.likes"):
         CACHE._memory[CACHE._hash(f"{user.id}.likes")] = CacheItem(

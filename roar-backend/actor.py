@@ -24,7 +24,9 @@ class Actor(RObject):
         self.a1=a1
         self.a2=a2
         self.preferences=[]
-    
+
+        if alias == 'me':
+            return
 
         IP: str = sck.gethostbyname(sck.gethostname())
 

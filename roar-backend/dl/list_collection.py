@@ -6,6 +6,8 @@ from ..objects.collection import Collection
 from .list_node import ListNode
 import Pyro5.server
 import time
+from threading import Thread
+import schedule
 
 @Pyro5.server.expose
 class ListCollection(Collection):
@@ -63,7 +65,18 @@ class ListCollection(Collection):
         self._first=servers_list[0].id
         self._last=servers_list[-1].id
         
+        if len(servers_list)>1:
+            self._second=servers_list[1].id
+            self._prelast=servers_list[-2].id
+            self._current_successor=servers_list[1]
+        else:
+            self._second=servers_list[0].id
+            self._prelast=servers_list[0].id
+            self._current_successor=servers_list[0]
         self._current=self._first
+        self._stabilize_worker: Thread() = Thread(target=self.stabilize_worker)
+        self._sucsuccessor = self.id
+        self._stabilize_worker.start()
 
     @property
     def first(self):             
@@ -80,6 +93,22 @@ class ListCollection(Collection):
     @last.setter
     def last(self, value):    
         self._last = value
+
+    @property
+    def second(self):             
+        return self._second
+
+    @second.setter
+    def second(self, value):    
+        self._second = value
+
+    @property
+    def prelast(self):             
+        return self.prelast
+
+    @prelast.setter
+    def prelast(self, value):    
+        self._prelast = value
     
     @property
     def current(self):             
@@ -90,12 +119,29 @@ class ListCollection(Collection):
         self.current = value
 
     @property
+    def current_successor(self):             
+        return self._current_successor
+
+    @current_successor.setter
+    def current_successor(self, value):    
+        self._current_successor = value
+
+    @property
     def top(self):             
         return self._top
 
     @top.setter
     def top(self, value):    
         self._top = value
+
+    def stabilize_worker(self):
+        def sw():
+            self.check_first()
+            self.check_last()
+            self.check_current()
+        schedule.every(0.05).seconds.do(sw)
+        while True:
+            schedule.run_pending()
 
     def allocate(self):
         self.top*=2
@@ -141,7 +187,10 @@ class ListCollection(Collection):
             while len(actual_real_node.objects) < self.top:
                 if len(losser_real_node.objects)!=0:
                     obj=losser_real_node.objects.popleft()
-                    actual_real_node.objects.append(obj)
+                    losser_real_node._pyroDaemon.unregister(obj)
+                    class_dict=losser_real_node.get_dict(obj)
+                    actual_node.copy(class_dict)
+                    actual_node._pyroDaemon.register(obj)
                 else:
                     losser_node=losser_real_node.successor
                     losser_real_node._pyroRelease()
@@ -213,3 +262,41 @@ class ListCollection(Collection):
                     actual_node = node.successor
             except:
                 print('Error items')
+    
+    def check_first(self):
+        try:
+            with Pyro5.client.Proxy('PYRO:' + self.first) as first:
+                self.second=first.successor
+        except:
+
+            try:
+                with Pyro5.client.Proxy('PYRO:' + self.second) as second:
+                    self.first = self.second
+                    self.second = second.successor
+            except:
+                print("Se rompio la conexion")
+
+    def check_last(self):
+        try:
+            with Pyro5.client.Proxy('PYRO:' + self.last) as last:
+                self.prelast=last.predecessor
+        except:
+
+            try:
+                with Pyro5.client.Proxy('PYRO:' + self.second) as second:
+                    self.first = self.second
+                    self.second = second.successor
+            except:
+                print("Se rompio la conexion")
+
+    def check_current(self):
+        try:
+            with Pyro5.client.Proxy('PYRO:' + self.current) as current:
+                self.current_successor=current.successor
+        except:
+
+            try:
+                with Pyro5.client.Proxy('PYRO:' + self.current_successor) as current_successor:
+                    self.current = current_successor.predecessor
+            except:
+                print("Se rompio la conexion")

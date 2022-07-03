@@ -5,6 +5,7 @@ from collections import deque
 from ..objects.robject import RObject
 from threading import Thread
 import schedule
+from datetime import datetime
 
 from ..activities import *
 from ..post import Post
@@ -20,6 +21,19 @@ DICT_STR_TYPE={
     'Post' : Post
 }
 
+DICT_STR_INS={
+    'CreateActivity':CreateActivity("as","dasd","asds",datetime.now(),["sd"],"ert"),
+    'FollowActivity' : FollowActivity("sjd","fdo"),
+    'LikeActivity' : LikeActivity("eww","dqs","erui"),
+    'ShareActivity': ShareActivity("hoh","bgjg"),
+    'DeleteActivity': DeleteActivity("er","io"),
+    'UnfollowActivity': UnfollowActivity("ds","dfsd"),
+    'UnlikeActivity': UnlikeActivity("das","ds","sdfd"),
+    'Post' : Post()
+}
+
+SERIALIZER=Pyro5.api.SerializerBase()
+
 @Pyro5.server.expose
 class ListNode(RObject):
     def __init__(self,id:str) -> None:
@@ -33,6 +47,7 @@ class ListNode(RObject):
         self._partOf : str = None
         self._top = 0
         self._stabilize_worker: Thread() = Thread(target=self.stabilize_worker)
+        self._stabilize_worker.start()
 
 
     def stabilize_worker(self):
@@ -95,6 +110,14 @@ class ListNode(RObject):
     @top.setter
     def top(self, value):    
         self._top = value
+
+    def get_dict(self,thing):
+        class_dict=SERIALIZER.class_to_dict(thing)
+        things_to_delete=['_change','__class__','_pyroId','_pyroDaemon']
+        for i in things_to_delete:
+            if i in class_dict:
+                del class_dict[i]
+        return class_dict
  
     def join(self,other:str) -> None:
         self.objects.clear()
@@ -137,6 +160,8 @@ class ListNode(RObject):
             print('Error join succesor')
    
     def check_successor(self):
+        if self.successor == self.id:
+            return
         try:
             with Pyro5.client.Proxy('PYRO:' + self.successor) as successor:
                 self.sucsuccessor=successor.successor
@@ -176,10 +201,12 @@ class ListNode(RObject):
                         last.successor=self.sucsuccessor
                         actual_list.last=last.predecessor
                         last.predecessor=self.id
-                        last.predecessor_objects=deepcopy(self.objects)
+                        for i in self.objects:
+                            last.predecessor_copy(i)
                         try:
                             with Pyro5.client.Proxy('PYRO:'+last.successor) as successor:
-                                last.objects = deepcopy(successor.predecessor_objects)
+                                for i in successor.predecessor_objects:
+                                    last.copy(i)
                                 successor.predecessor=last.id
                                 last.sucsuccessor=successor.successor
                         except:
@@ -215,6 +242,7 @@ class ListNode(RObject):
     def remove(self,id):
         for i in self.objects:
             if i.id==id:
+                self._pyroDaemon.unregister(i)
                 self.objects.remove(i)
         try:
             with Pyro5.client.Proxy(f"PYRO:{self.successor}") as successor:
@@ -226,3 +254,20 @@ class ListNode(RObject):
         for i in self.objects:
             if i.id==id:
                 self.predecessor_objects.remove(i)
+
+    def copy(self, class_dict):
+        instance=DICT_STR_INS[class_dict['_type']]()
+
+        for k in class_dict:
+            setattr(instance,k,class_dict[k])
+        self.objects.append(instance)
+
+        self._pyroDaemon.register(instance)
+        self.change += self.change_data_sucessor
+
+    def predecessor_copy(self,class_dict):
+        instance=DICT_STR_INS[class_dict['_type']]()
+
+        for k in class_dict:
+            setattr(instance,k,class_dict[k])
+        self.predecessor_objects.append(instance)

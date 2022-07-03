@@ -11,7 +11,7 @@ class RObject(ABC):
         self._id=id
         self._type=type
         self._likes={}
-        self.change: Event = Event()
+        self._change: Event = Event()
 
     @Pyro5.server.expose
     @property
@@ -26,3 +26,13 @@ class RObject(ABC):
     @property
     def likes(self):
         return self.likes
+
+    @Pyro5.server.expose
+    @property
+    def change(self):
+        return self._change
+
+    @Pyro5.server.expose
+    @change.setter
+    def change(self,value):
+        self._change=value

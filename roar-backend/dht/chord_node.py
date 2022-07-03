@@ -1,4 +1,4 @@
-from copy import deepcopy
+from datetime import datetime
 from ..objects.robject import RObject
 import hashlib
 import Pyro5.server
@@ -10,6 +10,7 @@ from ..actor import Actor
 from ..post import Post
 from copy import deepcopy
 from typing import Tuple
+import Pyro5.api
 
 DICT_STR_TYPE = {
     'ListCollection': ListCollection,
@@ -17,6 +18,13 @@ DICT_STR_TYPE = {
     'Post': Post
 }
 
+DICT_STR_INS={
+    'ListCollecction' : lambda : ListCollection('list',['oop']),
+    'Actor': lambda : Actor("er", "k", "lp9", "ko", "lo"),
+    'Post': lambda : Post("er", "k", "lp9", "ko", datetime.now())
+}
+
+SERIALIZER=Pyro5.api.SerializerBase()
 
 @Pyro5.server.expose
 class ChordNode(RObject):
@@ -185,12 +193,21 @@ class ChordNode(RObject):
             self.predecessor = other
             for k in self.objects:
                 key = int(hashlib.sha1(k.encode('utf8')).hexdigest(), base=16)
-                if self.between(key, self.key, other_node.key):
+                if (self.key > other_node.key and (key <= other_node.key or key > self.key)) or (self.key < other_node.key and(key>self.key and k<=other_node.key)):
                     # unsuscribe event
-                    self.objects[k] -= self.change_data_sucessor
-                    other_node.copy(self.objects[k])
-                    self._pyroDaemon.unregister(self.objects[k])
-                    del self.objects[k]
+                    try:
+                        self.objects[k].change -= self.change_data_sucessor
+                        class_dict=SERIALIZER.class_to_dict(self.objects[k])
+                        del class_dict['_change']
+                        del class_dict['__class__']
+                        del class_dict['_pyroId']
+                        del class_dict['_pyroDaemon']
+                        other_node.copy(class_dict)
+                        self._pyroDaemon.unregister(self.objects[k])
+                        del self.objects[k]
+                    except Exception as e:
+                        print(str(e))
+                    print("pase")
             self._predecessor_objects = other_node.objects.copy()
 
         other_node._pyroRelease()
@@ -266,15 +283,16 @@ class ChordNode(RObject):
         try:
             #print("hear=",node)
             with Pyro5.client.Proxy('PYRO:'+node) as nd:
+                print(self.objects)
                 print(nd.objects)
                 item=nd.give_item(id)
-                print(item.id)
                 return item
         except Exception as e:
             print(str(e))
 
     def give_item(self,id):
-        return self.objects[id] if id in self.objects else None
+        item = self.objects[id] if id in self.objects else None
+        return item
 
     def add_item(self, type_class, args):
         type_instance = DICT_STR_TYPE[type_class]
@@ -286,6 +304,7 @@ class ChordNode(RObject):
             self._pyroDaemon.register(item)
         except Exception as e:
             print(str(e))
+
 
     def add(self, type_class, args):
         key = int(hashlib.sha1(args[0].encode('utf8')).hexdigest(), base=16)
@@ -329,7 +348,13 @@ class ChordNode(RObject):
 
         return True
 
-    def copy(self, item):
-        self.objects[item.id] = deepcopy(item)
-        self._pyroDaemon.register(item)
+    def copy(self, class_dict):
+        instance=DICT_STR_INS[class_dict['_type']]()
+        print(instance.id)
+        for k in class_dict:
+            setattr(instance,k,class_dict[k])
+        print(instance.id)
+        self.objects[instance.id] = instance
+        print(self.objects)
+        self._pyroDaemon.register(instance)
         self.change += self.change_data_sucessor

@@ -128,7 +128,7 @@ parser.add_argument("--subnet", metavar="subnet", type=str, help="a string repre
 
 args = parser.parse_args()
 
-daemon = server.Daemon("0.0.0.0", 8002)
+daemon = server.Daemon(IP, 8002)
 
 def start_api():
     uvicorn.run(app, host="0.0.0.0", port=32020)

@@ -651,7 +651,14 @@ async def get_shared_info(post_id:str):
             sp = node.search(share_post)
             if sp is None:
                 raise HTTPException(status_code=404, detail=f"Post not found")
-            return sp._shared
+            
+            if sp!=None and CACHE.is_in(f"{sp.id}.shared") and CACHE.get(f"{sp.id}.shared")[1] == sp.shared_soa:
+                return CACHE.get(f"{sp.id}.shared")[0]
+    
+            else:
+                CACHE.add(key=f"{sp.id}.shared", value=[
+                        deepcopy(sp.likes), sp.shared_soa])
+                return sp._shared
     except:
         raise HTTPException(
                 status_code=500, detail=f"An error has occurred")

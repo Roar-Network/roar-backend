@@ -386,7 +386,7 @@ async def get_posts(alias: str):
 
     return posts
 
-@app.get("/{alias}/shared")
+@app.get("/{alias}/shares")
 async def get_shared(alias: str):
     user=None
     try:

@@ -1,6 +1,7 @@
 from copy import deepcopy
 import Pyro5.server
 import Pyro5.client
+import Pyro5.api
 from collections import deque
 from ..objects.robject import RObject
 from threading import Thread
@@ -28,8 +29,7 @@ DICT_STR_INS={
     'ShareActivity': ShareActivity("hoh","bgjg"),
     'DeleteActivity': DeleteActivity("er","io"),
     'UnfollowActivity': UnfollowActivity("ds","dfsd"),
-    'UnlikeActivity': UnlikeActivity("das","ds","sdfd"),
-    'Post' : Post()
+    'UnlikeActivity': UnlikeActivity("das","ds","sdfd")
 }
 
 SERIALIZER=Pyro5.api.SerializerBase()
@@ -150,7 +150,7 @@ class ListNode(RObject):
 
         self.successor=actual_list.first
         self.predecessor=actual_list.last
-        self.partof=other
+        self.partOf=other
         actual_list.last = self.id
         try :
             with Pyro5.client.Proxy('PYRO:'+self.successor) as nd:
@@ -160,7 +160,7 @@ class ListNode(RObject):
             print('Error join succesor')
    
     def check_successor(self):
-        if self.successor == self.id:
+        if self.successor == self.id or self.successor is None or self.partOf is None:
             return
         try:
             with Pyro5.client.Proxy('PYRO:' + self.successor) as successor:

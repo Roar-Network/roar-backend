@@ -371,9 +371,8 @@ async def get_posts(alias: str):
             usr_ob = node.search(user.outbox)
 
             with Pyro5.client.Proxy(f'PYRO:posts@{IP}:8002') as post_dht:
-                for i in usr_ob.items:
-                    if i.type == "CreateActivity":
-                        posts.append(post_dht.search(i.obj))
+                for i in usr_ob.items("CreateActivity"):
+                    posts.append(post_dht.search(i.obj))
     except Exception as e:
        raise HTTPException(status_code=500, detail=f"An error has occurred {e} line 378")
     if CACHE.is_in(f"{user.id}.posts"):
@@ -403,17 +402,16 @@ async def get_shared(alias: str):
             usr_ob = node.search(user.outbox)
 
             with Pyro5.client.Proxy(f'PYRO:posts@{IP}:8002') as post_dht:
-                for i in usr_ob.items:
-                    if i.obj.type == "ShareActivity":
-                        shared.append(post_dht.search(i.obj))
+                for i in usr_ob.items( "ShareActivity"):
+                    shared.append(post_dht.search(i.obj))
     except Exception as e:
        raise HTTPException(status_code=500, detail=f"An error has occurred {e} line 411")
 
-    if CACHE.is_in(f"{user.id}.posts"):
-        CACHE._memory[CACHE._hash(f"{user.id}.posts")] = CacheItem(
+    if CACHE.is_in(f"{user.id}.shared"):
+        CACHE._memory[CACHE._hash(f"{user.id}.shared")] = CacheItem(
             [deepcopy(shared), user.shared_soa])
     else:
-        CACHE.add(key=f"{user.id}.posts", value=[
+        CACHE.add(key=f"{user.id}.shared", value=[
                   deepcopy(shared), user.shared_soa])
 
     return shared
@@ -440,9 +438,8 @@ async def get_likes(alias: str):
 
             with Pyro5.client.Proxy(f'PYRO:posts@{IP}:8002') as post_dht:
                 # TODO: paginacion en esto, en los posts, like, share, reply
-                for i in usr_ob.items:
-                    if i.type == "Like":
-                        likes.append(post_dht.search(i.obj))
+                for i in usr_ob.items("LikeActivity"):
+                    likes.append(post_dht.search(i.obj))
     except Exception as e:
        raise HTTPException(status_code=500, detail=f"An error has occurred {e} line 448")
 

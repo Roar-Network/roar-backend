@@ -50,12 +50,6 @@ class Actor(RObject):
         except Exception as e:
             print('Error creando outbox' + str(e))
 
-        try:
-            with Pyro5.client.Proxy('PYRO:likeds@'+IP+':8002') as node:
-                node.add('ListCollection',(f'{alias}/liked',direction_list))
-        except Exception as e:
-            print('Error creando liked' + str(e))
-
     @property
     def following_soa(self):
         return self._following_soa

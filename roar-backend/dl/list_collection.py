@@ -32,7 +32,6 @@ class ListCollection(Collection):
                 print(str(e))
             node=ListNode(id+'@'+server)
             servers_list.append(node)
-        
 
         self._first=servers_list[0]
         self._last=servers_list[-1]
@@ -79,11 +78,13 @@ class ListCollection(Collection):
         self._stabilize_worker.start()
 
     @property
-    def first(self):             
+    def first(self):       
+        if isinstance(self._first, ListNode):
+            return self._first.id      
         return self._first
 
     @first.setter
-    def first(self, value):    
+    def first(self, value):
         self._first = value
 
     @property
@@ -241,27 +242,32 @@ class ListCollection(Collection):
                         return
                 actual_node = node.predecessor
             except:
-                print('Error items')
+                print('Error items remove')
 
-    @property
-    def items(self):
-        actual_node=None
-        try:
-            with Pyro5.client.Proxy('PYRO:' + self.first) as node:
-                for item in node.objects:
-                    yield item
-                actual_node=node.successor
-        except:
-            print('Error items')
+    def items(self,activity_type:str):
+        actual_node=self.current
 
         while actual_node != self.first:
             try:
                 with Pyro5.client.Proxy('PYRO:' + actual_node) as node:
                     for item in node.objects:
-                        yield item
-                    actual_node = node.successor
-            except:
-                print('Error items')
+                        if item.type == activity_type:
+                            yield item
+                    actual_node = node.predecessor
+            except Exception as e:
+                print(f'Error items {e}')
+
+        filtered_items = []
+        try:
+            with Pyro5.client.Proxy('PYRO:' + self.first) as node:
+                for item in node.objects:
+                    if item.type == activity_type:
+                        filtered_items.append(item)
+                        # yield item
+        except Exception as e:
+            print(str(e))
+        return filtered_items
+       
     
     def check_first(self):
         try:

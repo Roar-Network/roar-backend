@@ -369,10 +369,10 @@ async def get_posts(alias: str):
     try:
         with Pyro5.client.Proxy(f'PYRO:outboxes@{IP}:8002') as node:
             usr_ob = node.search(user.outbox)
-
             with Pyro5.client.Proxy(f'PYRO:posts@{IP}:8002') as post_dht:
                 for i in usr_ob.items("CreateActivity"):
-                    posts.append(post_dht.search(i.obj))
+                    print("HAHA", i)
+                    posts.append(post_dht.search(i))
     except Exception as e:
        raise HTTPException(status_code=500, detail=f"An error has occurred {e} line 378")
     if CACHE.is_in(f"{user.id}.posts"):
@@ -382,6 +382,7 @@ async def get_posts(alias: str):
         CACHE.add(key=f"{user.id}.posts", value=[
                   deepcopy(posts), user.posts_soa])
 
+    print(posts)
     return posts
 
 @app.get("/{alias}/shares")

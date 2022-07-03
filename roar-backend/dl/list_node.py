@@ -185,13 +185,6 @@ class ListNode(RObject):
                 except:
                     print('Error check_successor outbox')
             
-            elif list_type == 'liked':
-                try :
-                    with Pyro5.client.Proxy('PYRO:'+'likeds@'+server) as nd:
-                        actual_list=nd.search(self.partOf)
-                except:
-                    print('Error check_successor liked')
-            
             try:
                 if self.successor == actual_list.first:
                     actual_list.first=self.sucsuccessor

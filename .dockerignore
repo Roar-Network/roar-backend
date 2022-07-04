@@ -1,0 +1,12 @@
+doc/
+.github/
+.vscode/
+.gitignore
+.pep8speaks.yaml
+CONTRIBUTING.md
+Dockerfile
+__pycache__
+python-3-10.tar
+roar-server.tar
+roar-system.tar
+nltk_data

@@ -1,3 +1,9 @@
+.vscode/
+python-3-10.tar
+roar-server.tar
+nltk_data/
+roar-system.tar
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

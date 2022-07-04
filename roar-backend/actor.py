@@ -117,7 +117,9 @@ class Actor(RObject):
             
 
     def add_followers(self, id_obj: str, notify_change: bool = True) -> None:
+        print(self.id,id_obj)
         self.followers.add(id_obj)
+        print(self.followers)
         if notify_change:
             self.change(self.alias, "add_followers", (id_obj, False))
 

@@ -49,7 +49,7 @@ CLASSIFIER=TextClassifier()
 # openssl rand -hex 32
 SECRET_KEY = "97af2450780e8090d64696b529c104c1aadbc356ecbed48feb4e2b7db4b42622"
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 1440
 CACHE = Cache(512)
 MAX_SAVE=2048
 IP: str = sck.gethostbyname(sck.gethostname())
@@ -252,6 +252,8 @@ async def create_post(content: str, reply: str = "", current_user: Actor = Depen
         # save new post
         with Pyro5.client.Proxy(f'PYRO:posts@{IP}:8002') as node:
             node.add("Post",(current_user.id+str(moment),current_user.id, content, reply, moment))
+            p = node.search(current_user.id+str(moment))
+            p.cat_label = post.cat_label
             current_user.posts_soa += 1
             current_user.posts_soa %= MAX_SAVE
         # put in outbox of current actor
@@ -279,7 +281,7 @@ async def create_post(content: str, reply: str = "", current_user: Actor = Depen
 
 
 @app.get("/{alias}/followings")
-async def get_following(alias: str):
+async def get_following(alias: str, current_user: Actor = Depends(get_current_user)):
     user=None
     try:
         with Pyro5.client.Proxy(f'PYRO:actors@{IP}:8002') as node:
@@ -317,7 +319,7 @@ async def get_following(alias: str):
 
 
 @app.get("/{alias}/followers")
-async def get_followers(alias: str):
+async def get_followers(alias: str,  current_user: Actor = Depends(get_current_user)):
     user=None
     try:
         with Pyro5.client.Proxy(f'PYRO:actors@{IP}:8002') as node:
@@ -327,7 +329,7 @@ async def get_followers(alias: str):
     except:
        raise HTTPException(status_code=500, detail=f"An error has occurred")
     
-    if user!=None and CACHE.is_in(f"{user.id}.followers") and CACHE.get(f"{user.id}.followers")[1] == user.following_soa:
+    if user!=None and CACHE.is_in(f"{user.id}.followers") and CACHE.get(f"{user.id}.followers")[1] == user.followers_soa:
         return CACHE.get(f"{user.id}.followers")[0]
     else:
         followers = []
@@ -338,6 +340,7 @@ async def get_followers(alias: str):
                     if usr is None:
                         raise HTTPException(status_code=404, detail=f"Username {i} not found")
                     else:
+                        print(usr.alias)
                         followers.append({"username": usr.user_name, "alias": usr.alias})
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"An error has occurred {e} line 343")
@@ -352,7 +355,7 @@ async def get_followers(alias: str):
 
 
 @app.get("/{alias}/posts")
-async def get_posts(alias: str):
+async def get_posts(alias: str,  current_user: Actor = Depends(get_current_user)):
     user=None
     try:
         with Pyro5.client.Proxy(f'PYRO:actors@{IP}:8002') as node:
@@ -370,9 +373,27 @@ async def get_posts(alias: str):
         with Pyro5.client.Proxy(f'PYRO:outboxes@{IP}:8002') as node:
             usr_ob = node.search(user.outbox)
             with Pyro5.client.Proxy(f'PYRO:posts@{IP}:8002') as post_dht:
-                for i in usr_ob.items("CreateActivity"):
-                    print("HAHA", i)
-                    posts.append(post_dht.search(i))
+                for i in usr_ob.items(["CreateActivity"]):
+                    p = post_dht.search(i)
+                    if p is not None:
+                        dp = {}
+                        dp["id"] = p.id
+                        dp["author"] = p.author
+                        dp["date"] = p.published
+                        dp["text"] = p.content
+                        dp["count_fav"] = len(p.likes)
+                        dp['count_comment'] = len(p.replies)
+                        dp["count_share"] = len(p.shared)
+                        dp["category"] = p.cat_label
+                        dp["fav"] = current_user.id in p.likes
+                        dp["share"] = current_user.id in p.shared
+                        with Pyro5.client.Proxy(f'PYRO:actors@{IP}:8002') as actors_dht:
+                            act = actors_dht.search(p.author)
+                            if act is not None:
+                                dp["username"] = act.user_name
+                            else:
+                                raise HTTPException(status_code=404, detail=f"Username {p.author} not found")
+                        posts.append(dp)
     except Exception as e:
        raise HTTPException(status_code=500, detail=f"An error has occurred {e} line 378")
     if CACHE.is_in(f"{user.id}.posts"):
@@ -381,12 +402,44 @@ async def get_posts(alias: str):
     else:
         CACHE.add(key=f"{user.id}.posts", value=[
                   deepcopy(posts), user.posts_soa])
-
-    print(posts)
     return posts
 
+
+@app.get("/me/feed")
+async def get_posts(current_user: Actor = Depends(get_current_user)):
+    posts = []
+    try:
+        with Pyro5.client.Proxy(f'PYRO:inboxes@{IP}:8002') as node:
+            usr_ob = node.search(current_user.inbox)
+            with Pyro5.client.Proxy(f'PYRO:posts@{IP}:8002') as post_dht:
+                for i in usr_ob.items(["CreateActivity", "ShareActivity"]):
+                    p = post_dht.search(i)
+                    if p is not None:
+                        dp = {}
+                        dp["id"] = p.id
+                        dp["author"] = p.author
+                        dp["date"] = p.published
+                        dp["text"] = p.content
+                        dp["count_fav"] = len(p.likes)
+                        dp['count_comment'] = len(p.replies)
+                        dp["count_share"] = len(p.shared)
+                        dp["category"] = p.cat_label
+                        dp["fav"] = current_user.id in p.likes
+                        dp["share"] = current_user.id in p.shared
+                        with Pyro5.client.Proxy(f'PYRO:actors@{IP}:8002') as actors_dht:
+                            act = actors_dht.search(p.author)
+                            if act is not None:
+                                dp["username"] = act.user_name
+                            else:
+                                raise HTTPException(status_code=404, detail=f"Username {p.author} not found")
+                        posts.append(dp)
+    except Exception as e:
+       raise HTTPException(status_code=500, detail=f"An error has occurred {e} line 378")
+    return posts
+
+
 @app.get("/{alias}/shares")
-async def get_shared(alias: str):
+async def get_shared(alias: str,  current_user: Actor = Depends(get_current_user)):
     user=None
     try:
         with Pyro5.client.Proxy(f'PYRO:actors@{IP}:8002') as node:
@@ -403,8 +456,27 @@ async def get_shared(alias: str):
             usr_ob = node.search(user.outbox)
 
             with Pyro5.client.Proxy(f'PYRO:posts@{IP}:8002') as post_dht:
-                for i in usr_ob.items( "ShareActivity"):
-                    shared.append(post_dht.search(i.obj))
+                for i in usr_ob.items(["ShareActivity"]):
+                    p = post_dht.search(i)
+                    if p is not None:
+                        dp = {}
+                        dp["id"] = p.id
+                        dp["author"] = p.author
+                        dp["date"] = p.published
+                        dp["text"] = p.content
+                        dp["count_fav"] = len(p.likes)
+                        dp['count_comment'] = len(p.replies)
+                        dp["count_share"] = len(p.shared)
+                        dp["category"] = p.cat_label
+                        dp["fav"] = current_user.id in p.likes
+                        dp["share"] = current_user.id in p.shared
+                        with Pyro5.client.Proxy(f'PYRO:actors@{IP}:8002') as actors_dht:
+                            act = actors_dht.search(p.author)
+                            if act is not None:
+                                dp["username"] = act.user_name
+                            else:
+                                raise HTTPException(status_code=404, detail=f"Username {p.author} not found")
+                        shared.append(dp)
     except Exception as e:
        raise HTTPException(status_code=500, detail=f"An error has occurred {e} line 411")
 
@@ -419,7 +491,7 @@ async def get_shared(alias: str):
 
 
 @app.get("/{alias}/likes")
-async def get_likes(alias: str):
+async def get_likes(alias: str,  current_user: Actor = Depends(get_current_user)):
     user=None
     try:
         with Pyro5.client.Proxy(f'PYRO:actors@{IP}:8002') as node:
@@ -438,9 +510,27 @@ async def get_likes(alias: str):
             usr_ob = node.search(user.outbox)
 
             with Pyro5.client.Proxy(f'PYRO:posts@{IP}:8002') as post_dht:
-                # TODO: paginacion en esto, en los posts, like, share, reply
-                for i in usr_ob.items("LikeActivity"):
-                    likes.append(post_dht.search(i.obj))
+                for i in usr_ob.items(["LikeActivity"]):
+                    p = post_dht.search(i)
+                    if p is not None:
+                        dp = {}
+                        dp["id"] = p.id
+                        dp["author"] = p.author
+                        dp["date"] = p.published
+                        dp["text"] = p.content
+                        dp["count_fav"] = len(p.likes)
+                        dp['count_comment'] = len(p.replies)
+                        dp["count_share"] = len(p.shared)
+                        dp["category"] = p.cat_label
+                        dp["fav"] = current_user.id in p.likes
+                        dp["share"] = current_user.id in p.shared
+                        with Pyro5.client.Proxy(f'PYRO:actors@{IP}:8002') as actors_dht:
+                            act = actors_dht.search(p.author)
+                            if act is not None:
+                                dp["username"] = act.user_name
+                            else:
+                                raise HTTPException(status_code=404, detail=f"Username {p.author} not found")
+                        likes.append(dp)
     except Exception as e:
        raise HTTPException(status_code=500, detail=f"An error has occurred {e} line 448")
 

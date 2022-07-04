@@ -74,7 +74,7 @@ class ListCollection(Collection):
             self._current_successor=servers_list[0]
         self._current=self._first
         self._stabilize_worker: Thread() = Thread(target=self.stabilize_worker)
-        #self._stabilize_worker.start()
+        # self._stabilize_worker.start()
 
     @property
     def first(self):       
@@ -243,36 +243,37 @@ class ListCollection(Collection):
             except:
                 print('Error items remove')
 
-    def items(self,activity_type:str):
+    def items(self,activity_type:List[str]):
         actual_node=self.current
+
+        # filtered_items = []
 
         while actual_node != self.first:
             try:
                 with Pyro5.client.Proxy('PYRO:' + actual_node) as node:
                     for item in node.objects:
-                        if item.type == activity_type:
-                            yield item
+                        if item.type in activity_type:
+                            # filtered_items.append(item.obj)
+                            yield item.obj
                     actual_node = node.predecessor
             except Exception as e:
                 print(f'Error items {e}')
 
-        filtered_items = []
+        
         try:
             with Pyro5.client.Proxy('PYRO:' + self.first) as node:
                 for item in node.objects:
-                    if item.type == activity_type:
-                        print("item=",item.id)
-                        filtered_items.append(item.obj)
-                        print("list=",filtered_items)
-                        # yield item
+                    if item.type in activity_type:
+                        # print("item=",item.id)
+                        # filtered_items.append(item.obj)
+                        yield item.obj
+                        # print("list=",filtered_items)
         except Exception as e:
             print(str(e))
-        print(filtered_items)
-        return filtered_items
+        # return filtered_items
        
     
     def check_first(self):
-        print(self.first)
         try:
             with Pyro5.client.Proxy('PYRO:' + self.first) as first:
                 self.second=first.successor
@@ -286,21 +287,19 @@ class ListCollection(Collection):
                 print("Se rompio la conexion en first")
 
     def check_last(self):
-        print(self.last)
         try:
             with Pyro5.client.Proxy('PYRO:' + self.last) as last:
                 self.prelast=last.predecessor
         except:
 
             try:
-                with Pyro5.client.Proxy('PYRO:' + self.second) as second:
-                    self.first = self.second
-                    self.second = second.successor
+                with Pyro5.client.Proxy('PYRO:' + self.prelast) as prelast:
+                    self.last = self.prelast
+                    self.prelast = prelast.predecessor
             except:
                 print("Se rompio la conexion en last")
 
     def check_current(self):
-        print(self.current)
         try:
             with Pyro5.client.Proxy('PYRO:' + self.current) as current:
                 self.current_successor=current.successor

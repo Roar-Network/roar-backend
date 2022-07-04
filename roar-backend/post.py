@@ -19,11 +19,19 @@ class Post(RObject):
         self._info["likes"]=0
         self._info["shares"]=0
         self._info["reply"]=0
-        _likes_soa=0
-        _shared_soa=0
-        _replies_soa=0
-        cat_label=-1
+        self._likes_soa=0
+        self._shared_soa=0
+        self._replies_soa=0
+        self._cat_label=-1
 
+    @property
+    def cat_label(self):
+        return self._cat_label
+
+    @cat_label.setter
+    def cat_label(self, value):
+        self._cat_label=value
+        
     @property
     def author(self):
         return self._author

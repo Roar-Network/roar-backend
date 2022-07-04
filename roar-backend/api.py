@@ -366,6 +366,7 @@ async def get_posts(alias: str,  current_user: Actor = Depends(get_current_user)
        raise HTTPException(status_code=500, detail=f"An error has occurred {e} line 363")
 
     if user!=None and CACHE.is_in(f"{user.id}.posts") and CACHE.get(f"{user.id}.posts")[1] == user.posts_soa:
+        print("cualquiercosa")
         return CACHE.get(f"{user.id}.posts")[0]
 
     posts = []
@@ -402,6 +403,8 @@ async def get_posts(alias: str,  current_user: Actor = Depends(get_current_user)
     else:
         CACHE.add(key=f"{user.id}.posts", value=[
                   deepcopy(posts), user.posts_soa])
+
+    print("posts=",user.posts_soa)
     return posts
 
 
@@ -613,7 +616,8 @@ async def delete_post(post_id: str, current_user: Actor = Depends(get_current_us
                 raise HTTPException(status_code=401, detail=f"Unauthorized")
 
         with Pyro5.client.Proxy(f'PYRO:outboxes@{IP}:8002') as node:
-            node.add("DeleteActivity",('Delete'+post_id, post_id))
+            outbox = node.search(current_user.outbox)
+            outbox.add("DeleteActivity",('Delete'+post_id, post_id))
             current_user.posts_soa += 1
             current_user.posts_soa %= MAX_SAVE
     except:

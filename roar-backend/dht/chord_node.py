@@ -218,7 +218,6 @@ class ChordNode(RObject):
                         print(str(e))
             for k in keys_to_delete:
                 del self.objects[k]
-            print("no_for=",self.predecessor_objects)
 
         other_node._pyroRelease()
 
@@ -283,9 +282,7 @@ class ChordNode(RObject):
     def search(self, id) -> RObject:
 
         key = int(hashlib.sha1(id.encode('utf8')).hexdigest(), base=16)
-        print(f"Search succesor node of {key} in {self.id}")
         node = self.find_successor(key)
-        print(f"Got node {node}")
         if node is None:
             raise Exception("Error search")
         elif node == self.id:
@@ -349,9 +346,9 @@ class ChordNode(RObject):
 
                 try:
                     with Pyro5.client.Proxy('PYRO:'+nd.successor) as successor:
-                        del successor.predecessor_objects[id]
-                except:
-                    print('Error del successor')
+                        successor.remove_predecessor_objects(id)
+                except Exception as e:
+                    print(f'Error del successor {e}')
         except:
             print('Error del')
 
@@ -366,3 +363,6 @@ class ChordNode(RObject):
 
         self._pyroDaemon.register(instance)
         self.change += self.change_data_sucessor
+
+    def remove_predecessor_objects(self, id):
+        del self.predecessor_objects[id]

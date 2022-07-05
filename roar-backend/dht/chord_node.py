@@ -150,9 +150,9 @@ class ChordNode(RObject):
             try:
                 with Pyro5.client.Proxy('PYRO:' + aux_id) as aux:
                     return aux.find_successor(key)
-            except:
-                # print(aux_id)
+            except Exception as e:
                 print('Successor not found')
+                print(str(e))
 
     def join(self, other: str) -> None:
         self.predecessor = None

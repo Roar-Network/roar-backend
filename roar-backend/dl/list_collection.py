@@ -101,15 +101,6 @@ class ListCollection(Collection):
     def top(self, value):    
         self._top = value
 
-    def stabilize_worker(self):
-        def sw():
-            self.check_first()
-            self.check_last()
-            self.check_current()
-        schedule.every(0.05).seconds.do(sw)
-        while True:
-            schedule.run_pending()
-
     def allocate(self):
         self.top*=2
         actual_node = None
@@ -179,7 +170,7 @@ class ListCollection(Collection):
             with Pyro5.client.Proxy('PYRO:'+self.current) as current:
                 if len (current.objects) >= self.top:
                     if self.current != self.last:
-                        self.current = current.id
+                        self.current = current.successor
                         self.add(type_class, args)
                     else:
                         self.allocate()

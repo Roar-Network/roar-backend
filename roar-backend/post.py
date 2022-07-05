@@ -51,6 +51,42 @@ class Post(RObject):
     @property
     def info(self):
         return self._info
+
+    @property
+    def likes_soa(self):
+        return self._likes_soa
+
+    @likes_soa.setter
+    def likes_soa(self,value):
+        self._likes_soa=value
+    
+    @property
+    def shared_soa(self):
+        return self._shared_soa
+
+    @shared_soa.setter
+    def shared_soa(self,value):
+        self._shared_soa=value
+    
+    @property
+    def replies_soa(self):
+        return self._replies_soa
+    
+    @replies_soa.setter
+    def replies_soa(self,value):
+        self._replies_soa=value
+
+    @property
+    def likes(self):
+        return self._likes
+    
+    @property
+    def shared(self):
+        return self._shared
+    
+    @property
+    def replies(self):
+        return self._replies
     
     def like(self, alias: str, notify_change: bool = True):
         self._likes.add(alias)
@@ -68,8 +104,10 @@ class Post(RObject):
         
     def add_shared(self, id_obj, notify_change: bool = True):
         self._shared.add(id_obj)
+        print("aqui")
         if notify_change:
             self.change(self.id, "add_shared", (id_obj, False))
+            print("hear")
 
     def add_reply(self, id_obj, notify_change: bool = True):
         self._replies.add(id_obj)
@@ -80,28 +118,3 @@ class Post(RObject):
         self._replies.remove(id_obj)
         if notify_change:
             self.change(self.id, "remove_reply", (id_obj, False))
-
-    @property
-    def likes_soa(self):
-        return self._likes_soa
-    
-    @property
-    def shared_soa(self):
-        return self._shared_soa
-    
-    @property
-    def replies_soa(self):
-        return self._replies_soa
-    
-    @property
-    def likes(self):
-        return self._likes
-    
-    @property
-    def shared(self):
-        return self._shared
-    
-    @property
-    def replies(self):
-        return self._replies
-    

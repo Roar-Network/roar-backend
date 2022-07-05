@@ -570,10 +570,10 @@ async def like(post_id: str, current_user: Actor = Depends(get_current_user)):
 
 
 @app.put("/me/share/{post_id}")
-async def share_post(share_post: str, current_user: Actor = Depends(get_current_user)):
+async def share_post(post_id: str, current_user: Actor = Depends(get_current_user)):
     try:
         with Pyro5.client.Proxy(f'PYRO:posts@{IP}:8002') as node:
-            post=node.search(share_post)
+            post=node.search(post_id)
             if post is None: 
                 raise HTTPException(status_code=404, details="Post unreachable")
             
@@ -583,22 +583,23 @@ async def share_post(share_post: str, current_user: Actor = Depends(get_current_
 
         with Pyro5.client.Proxy(f'PYRO:outboxes@{IP}:8002') as node:
             node.search(current_user.outbox).add(
-                "ShareActivity",("Share" + current_user.id +share_post, share_post))
+                "ShareActivity",("Share" + current_user.id +post_id, post_id))
 
         with Pyro5.client.Proxy(f'PYRO:actors@{IP}:8002') as node:
-            for i in current_user.followers:
-                act_i = node.search(i)
-                try:
-                    with Pyro5.client.Proxy(f'PYRO:inboxes@{IP}:8002') as inb:
+            try:
+                with Pyro5.client.Proxy(f'PYRO:inboxes@{IP}:8002') as inb:
+                    for i in current_user.followers:
+                        print(i)
+                        act_i = node.search(i)
                         inb.search(act_i.inbox).add("ShareActivity",("Share"+current_user.id +
-                           share_post, share_post))
-                except:
-                    raise HTTPException(
-                        status_code=500, detail=f"An error has occurred")
+                           post_id, post_id))
+                        print("add")
+            except:
+                raise HTTPException(
+                    status_code=500, detail=f"An error has occurred")
                     
     except:
         raise HTTPException(status_code=500, detail=f"An error has occurred")
-
     return 'success'
 
 

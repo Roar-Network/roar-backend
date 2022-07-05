@@ -1,4 +1,3 @@
-from copy import deepcopy
 import Pyro5.server
 import Pyro5.client
 import Pyro5.api
@@ -18,8 +17,7 @@ DICT_STR_TYPE={
     'ShareActivity': ShareActivity,
     'DeleteActivity': DeleteActivity,
     'UnfollowActivity': UnfollowActivity,
-    'UnlikeActivity': UnlikeActivity,
-    'Post' : Post
+    'UnlikeActivity': UnlikeActivity
 }
 
 DICT_STR_INS={

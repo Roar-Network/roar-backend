@@ -1,4 +1,3 @@
-from copy import deepcopy
 import Pyro5.server
 import Pyro5.client
 import Pyro5.api
@@ -18,8 +17,7 @@ DICT_STR_TYPE={
     'ShareActivity': ShareActivity,
     'DeleteActivity': DeleteActivity,
     'UnfollowActivity': UnfollowActivity,
-    'UnlikeActivity': UnlikeActivity,
-    'Post' : Post
+    'UnlikeActivity': UnlikeActivity
 }
 
 DICT_STR_INS={
@@ -185,21 +183,65 @@ class ListNode(RObject):
                 except:
                     print('Error check_successor outbox')
             
+            if self.successor == actual_list.last:
+                if self.successor==actual_list.current:
+                    actual_list.current=self.id
+                actual_list.last=self.id
+                self.successor=actual_list.first
+                try:
+                    with Pyro5.client.Proxy('PYRO:'+self.successor) as nd:
+                        while len(nd.predecessor_objects)>0:
+                            thing=nd.predecessor_objects.pop()
+                            class_dict = self.get_dict(thing)
+                            self.left_copy(class_dict)
+                except:
+                    print("Error check_successor last")
+                
+                if len(self.objects)>self.top:
+                    actual_list.allocate()
+                return
+
+            elif self.successor == actual_list.first:
+                if self.successor == actual_list.current:
+                    actual_list.current=self.id
+                actual_list.first=self.id
+                self.successor=self.sucsuccessor
+                actual_list.last=self.predecessor
+                if len(self.objects)==0:  
+                    try:
+                        with Pyro5.client.Proxy('PYRO:'+self.successor) as successor:
+                            for i in successor.predecessor_objects:
+                                class_dict = self.get_dict(i)
+                                self.copy(class_dict)
+                    except:
+                        print('Error check_succesor first 1')
+                else:
+                    try:
+                        with Pyro5.client.Proxy('PYRO:'+self.predecessor) as predecessor:
+                            for i in self.objects:
+                                class_dict = self.get_dict(i)
+                                predecessor.left_copy(class_dict)
+                        actual_list.allocate()
+                    except:
+                        print('Error check_successor first 2')
+                return
             try:
-                if self.successor == actual_list.first:
-                    actual_list.first=self.sucsuccessor
                 with Pyro5.client.Proxy('PYRO:'+actual_list.last) as last:
                     if len(last.objects) == 0:
+                        if self.successor==actual_list.current:
+                            actual_list.current=last.id
                         self.successor = last.id
                         last.successor=self.sucsuccessor
                         actual_list.last=last.predecessor
                         last.predecessor=self.id
                         for i in self.objects:
-                            last.predecessor_copy(i)
+                            class_dict = self.get_dict(i)
+                            last.predecessor_copy(class_dict)
                         try:
                             with Pyro5.client.Proxy('PYRO:'+last.successor) as successor:
                                 for i in successor.predecessor_objects:
-                                    last.copy(i)
+                                    class_dict = self.get_dict(i)
+                                    last.copy(class_dict)
                                 successor.predecessor=last.id
                                 last.sucsuccessor=successor.successor
                         except:
@@ -207,7 +249,7 @@ class ListNode(RObject):
                     else:
                         actual_list.allocate()
             except:
-                print('Error check_succesor last')
+                print('Error check_successor last')
             
     def add(self, type_class, args):
 
@@ -264,3 +306,13 @@ class ListNode(RObject):
         for k in class_dict:
             setattr(instance,k,class_dict[k])
         self.predecessor_objects.append(instance)
+
+    def left_copy(self, class_dict):
+        instance=DICT_STR_INS[class_dict['_type']]()
+
+        for k in class_dict:
+            setattr(instance,k,class_dict[k])
+        self.objects.appendleft(instance)
+
+        self._pyroDaemon.register(instance)
+        self.change += self.change_data_sucessor

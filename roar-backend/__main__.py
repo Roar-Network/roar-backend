@@ -15,6 +15,17 @@ from .api import app
 import uvicorn
 from .actor import Actor
 from schedule import every, run_pending
+import logging
+
+# get logger from logging module
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter('[%(asctime)s] %(levelname)s -> %(message)s', "%d-%m-%Y %H:%M:%S")
+handler = logging.StreamHandler()
+handler.setLevel(logging.INFO)
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+
 
 IP: str = sck.gethostbyname(sck.gethostname())
 
@@ -78,6 +89,8 @@ def check_chord_rings(node: ChordNode):
         try:
             with client.Proxy(f"PYRO:{name}@{item}:{port}") as rop:
                 node.join(rop.id)
+                admin.system_network.add(item)
+                logging.info(f"{node.id} connected to {rop.id.split('@')[1]}")
                 break
         except Exception:
             continue
@@ -102,6 +115,7 @@ def notify_system_network():
                     admin_sys.receive_system(admin.system_network)
             except: 
                 continue
+        logging.info(f"System network updated: {admin.system_network}")
     every(0.05).seconds.do(notify)
     while True:
         run_pending()
@@ -114,13 +128,6 @@ def check_all_rings():
     check_chord_rings(LIKEDS)
     check_chord_rings(POSTS)
 
-    # print('actors=',ACTORS.successor)
-    # print('inboxes=',INBOXES.successor)
-    # print('outboxes=',OUTBOXES.successor)
-    # print('likeds=',LIKEDS.successor)
-    # print('posts=',POSTS.successor)
-
-
 parser = argparse.ArgumentParser(description="Start backend server of Roar.")
 parser.add_argument('--ip', metavar='ip', type=str, nargs='+', default=[],
                 help='a string representing all the known IP')
@@ -131,6 +138,7 @@ args = parser.parse_args()
 daemon = server.Daemon(IP, 8002)
 
 def start_api():
+    logger.log(logging.INFO, "Starting API...")
     uvicorn.run(app, host="0.0.0.0", port=32020)
 
 NETWORK = scan(args.subnet) + args.ip
@@ -141,15 +149,10 @@ daemon.register(INBOXES, "inboxes")
 daemon.register(OUTBOXES, "outboxes")
 daemon.register(LIKEDS, "likeds")
 daemon.register(POSTS, "posts")
-# daemon.register(CreateActivity)
-# daemon.register(FollowActivity)
-# daemon.register(LikeActivity)
-# daemon.register(ShareActivity)
-# daemon.register(DeleteActivity)
-# daemon.register(UnfollowActivity)
-# daemon.register(Actor)
-# daemon.register(ListCollection)
+
 threading.Thread(target=check_all_rings).start()
 threading.Thread(target=notify_system_network).start()
 threading.Thread(target=start_api).start()
+
+logger.log(logging.INFO, "Server started...")
 daemon.requestLoop()

@@ -1,4 +1,3 @@
-from turtle import position
 import Pyro5.server
 import Pyro5.client
 from typing import List
@@ -18,7 +17,7 @@ class ListCollection(Collection):
             raise Exception('Insuficient servers')
 
         self._current=None
-        self._top=32
+        self._top=64
         
         servers_list:List[ListNode]=[]
         
@@ -64,14 +63,6 @@ class ListCollection(Collection):
         self._first=servers_list[0].id
         self._last=servers_list[-1].id
         
-        if len(servers_list)>1:
-            self._second=servers_list[1].id
-            self._prelast=servers_list[-2].id
-            self._current_successor=servers_list[1]
-        else:
-            self._second=servers_list[0].id
-            self._prelast=servers_list[0].id
-            self._current_successor=servers_list[0]
         self._current=self._first
         self._stabilize_worker: Thread() = Thread(target=self.stabilize_worker)
         # self._stabilize_worker.start()
@@ -93,22 +84,6 @@ class ListCollection(Collection):
     @last.setter
     def last(self, value):    
         self._last = value
-
-    @property
-    def second(self):             
-        return self._second
-
-    @second.setter
-    def second(self, value):    
-        self._second = value
-
-    @property
-    def prelast(self):             
-        return self.prelast
-
-    @prelast.setter
-    def prelast(self, value):    
-        self._prelast = value
     
     @property
     def current(self):             
@@ -117,14 +92,6 @@ class ListCollection(Collection):
     @current.setter
     def current(self, value):    
         self.current = value
-
-    @property
-    def current_successor(self):             
-        return self._current_successor
-
-    @current_successor.setter
-    def current_successor(self, value):    
-        self._current_successor = value
 
     @property
     def top(self):             
@@ -210,7 +177,7 @@ class ListCollection(Collection):
     def add(self, type_class, args):
         try:
             with Pyro5.client.Proxy('PYRO:'+self.current) as current:
-                if self.top <= len (current.objects):
+                if len (current.objects) >= self.top:
                     if self.current != self.last:
                         self.current = current.id
                         self.add(type_class, args)
@@ -219,8 +186,8 @@ class ListCollection(Collection):
                         self.add(type_class, args)
                 else:
                     current.add(type_class, args)
-        except:
-            print('Error asignando en la red')
+        except Exception as e:
+            print(str(e))
 
     def remove(self, id):
         actual_node=None
@@ -271,42 +238,3 @@ class ListCollection(Collection):
         except Exception as e:
             print(str(e))
         # return filtered_items
-       
-    
-    def check_first(self):
-        try:
-            with Pyro5.client.Proxy('PYRO:' + self.first) as first:
-                self.second=first.successor
-        except:
-
-            try:
-                with Pyro5.client.Proxy('PYRO:' + self.second) as second:
-                    self.first = self.second
-                    self.second = second.successor
-            except:
-                print("Se rompio la conexion en first")
-
-    def check_last(self):
-        try:
-            with Pyro5.client.Proxy('PYRO:' + self.last) as last:
-                self.prelast=last.predecessor
-        except:
-
-            try:
-                with Pyro5.client.Proxy('PYRO:' + self.prelast) as prelast:
-                    self.last = self.prelast
-                    self.prelast = prelast.predecessor
-            except:
-                print("Se rompio la conexion en last")
-
-    def check_current(self):
-        try:
-            with Pyro5.client.Proxy('PYRO:' + self.current) as current:
-                self.current_successor=current.successor
-        except:
-
-            try:
-                with Pyro5.client.Proxy('PYRO:' + self.current_successor) as current_successor:
-                    self.current = current_successor.predecessor
-            except:
-                print("Se rompio la conexion en current")

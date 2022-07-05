@@ -109,7 +109,7 @@ class ChordNode(RObject):
     def sucsuccessor(self, value):
         self._sucsuccessor = value
 
-    def change_data_sucessor(self, id_obj: str, field: str, value: Tuple) -> None:
+    def change_data_successor(self, id_obj: str, field: str, value: Tuple) -> None:
         # if sucessor is yourself, don't change anything
         if self.successor == self.id:
             return
@@ -117,8 +117,8 @@ class ChordNode(RObject):
         try:
             with Pyro5.client.Proxy('PYRO:' + self.successor) as successor:
                 successor.change_data(id_obj, field, value)
-        except:
-            print('Error change_data_sucessor')
+        except Exception as e:
+            print(f'Error change_data_successor{e}')
 
     def change_data(self, id_obj: str, field: str, args: Tuple) -> None:
         if id_obj in self.predecessor_objects:
@@ -205,20 +205,16 @@ class ChordNode(RObject):
                 if (self.key > other_node.key and (key <= other_node.key or key > self.key)) or (self.key < other_node.key and(key>self.key and k<=other_node.key)):
                     # unsuscribe event
                     try:
-                        self.objects[k].change -= self.change_data_sucessor
+                        self.objects[k].change -= self.change_data_successor
                         class_dict=self.get_dict(self.objects[k])
                         other_node.copy(class_dict)
-                        print("aaaa")    
                         self._pyroDaemon.unregister(self.objects[k])
                         self.predecessor_objects[k]=self.objects[k]
-                        print("for=",self.predecessor_objects)
                         keys_to_delete.append(k)
-                        print("bbbb")      
                     except Exception as e:
-                        print(str(e))
+                        print("EXCEPTION" + str(e))
             for k in keys_to_delete:
                 del self.objects[k]
-            print("no_for=",self.predecessor_objects)
 
         other_node._pyroRelease()
 
@@ -283,9 +279,7 @@ class ChordNode(RObject):
     def search(self, id) -> RObject:
 
         key = int(hashlib.sha1(id.encode('utf8')).hexdigest(), base=16)
-        print(f"Search succesor node of {key} in {self.id}")
         node = self.find_successor(key)
-        print(f"Got node {node}")
         if node is None:
             raise Exception("Error search")
         elif node == self.id:
@@ -308,7 +302,7 @@ class ChordNode(RObject):
         item = type_instance(*args)
         self.objects[item.id] = item
         # suscribe to the event of change
-        item.change += self.change_data_sucessor
+        item.change += self.change_data_successor
         try:
             self._pyroDaemon.register(item)
         except Exception as e:
@@ -345,13 +339,13 @@ class ChordNode(RObject):
             raise Exception("Error remove")
         try:
             with Pyro5.client.Proxy('PYRO:'+node) as nd:
-                del nd.objects[id]
+                nd.remove_item(id)
 
                 try:
                     with Pyro5.client.Proxy('PYRO:'+nd.successor) as successor:
-                        del successor.predecessor_objects[id]
-                except:
-                    print('Error del successor')
+                        successor.remove_predecessor_objects(id)
+                except Exception as e:
+                    print(f'Error del successor {e}')
         except:
             print('Error del')
 
@@ -365,4 +359,10 @@ class ChordNode(RObject):
         self.objects[instance.id] = instance
 
         self._pyroDaemon.register(instance)
-        self.change += self.change_data_sucessor
+        self.change += self.change_data_successor
+
+    def remove_item(self,id):
+        del self.objects[id]
+
+    def remove_predecessor_objects(self, id):
+        del self.predecessor_objects[id]

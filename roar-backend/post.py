@@ -104,11 +104,9 @@ class Post(RObject):
         
     def add_shared(self, id_obj, notify_change: bool = True):
         self._shared.add(id_obj)
-        print("aqui")
         if notify_change:
             self.change(self.id, "add_shared", (id_obj, False))
-            print("hear")
-
+      
     def add_reply(self, id_obj, notify_change: bool = True):
         self._replies.add(id_obj)
         if notify_change:

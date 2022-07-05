@@ -89,6 +89,7 @@ def check_chord_rings(node: ChordNode):
         try:
             with client.Proxy(f"PYRO:{name}@{item}:{port}") as rop:
                 node.join(rop.id)
+                admin.system_network.add(item)
                 logging.info(f"{node.id} connected to {rop.id.split('@')[1]}")
                 break
         except Exception:

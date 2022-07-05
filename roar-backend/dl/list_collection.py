@@ -64,8 +64,6 @@ class ListCollection(Collection):
         self._last=servers_list[-1].id
         
         self._current=self._first
-        self._stabilize_worker: Thread() = Thread(target=self.stabilize_worker)
-        # self._stabilize_worker.start()
 
     @property
     def first(self):       

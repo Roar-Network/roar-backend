@@ -25,6 +25,16 @@ from Cryptodome.Cipher import PKCS1_OAEP
 from Cryptodome.PublicKey import RSA
 from Cryptodome.Hash import SHA256
 from base64 import b64decode
+import logging
+
+# get logger from logging module
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter('[%(asctime)s] %(levelname)s -> %(message)s', "%d-%m-%Y %H:%M:%S")
+handler = logging.StreamHandler()
+handler.setLevel(logging.INFO)
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
 ##Matrix
 GRAPH = array([
@@ -148,12 +158,16 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
 
 @app.head("/")
 def root():
+    logger.info('Server active')
     return "OK"
 
 @app.get("/system_network")
 def get_system_network():
+    system = []
     with Pyro5.client.Proxy(f'PYRO:admin@{IP}:8002') as node:
-        return list(node.system_network)
+        system = list(node.system_network)
+    logger.info('System network: {}'.format(system))
+    return system
 
 @app.put("/forgot_password")
 def forgot_password(alias:str, a1:str, a2:str, password:str):
@@ -196,29 +210,23 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     access_token = create_access_token(
         data={"sub": user.id}, expires_delta=access_token_expires
     )
+    logger.info('Token generated to {}'.format(user.alias))
     return {"access_token": access_token, "token_type": "bearer"}
-
-
-
 
 @app.put("/create_user")
 def create_user(username: str, alias: str, password: str, a1: str, a2: str):
     try:
-        print('connecting')
         with Pyro5.client.Proxy(f'PYRO:actors@{IP}:8002') as node:
-            print("connected")
             item= node.search(alias)
             if item is None:
-                print("not found")
                 node.add("Actor",(alias, username, get_password_hash(my_decrypt(password)), get_password_hash(my_decrypt(a1)), get_password_hash(my_decrypt(a2))))
+                logger.info('User created: {}'.format(alias))
             else:
-                print(item.id)
                 raise HTTPException(
                     status_code=400, detail=f"User {alias} already exist")
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An error has occurred {e}")
-    return 'success'
 
 
 @app.post("/me/change_password")
@@ -340,7 +348,6 @@ async def get_followers(alias: str,  current_user: Actor = Depends(get_current_u
                     if usr is None:
                         raise HTTPException(status_code=404, detail=f"Username {i} not found")
                     else:
-                        print(usr.alias)
                         followers.append({"username": usr.user_name, "alias": usr.alias})
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"An error has occurred {e} line 343")
@@ -366,7 +373,6 @@ async def get_posts(alias: str,  current_user: Actor = Depends(get_current_user)
        raise HTTPException(status_code=500, detail=f"An error has occurred {e} line 363")
 
     if user!=None and CACHE.is_in(f"{user.id}.posts") and CACHE.get(f"{user.id}.posts")[1] == user.posts_soa:
-        print("cualquiercosa")
         return CACHE.get(f"{user.id}.posts")[0]
 
     posts = []
@@ -404,7 +410,6 @@ async def get_posts(alias: str,  current_user: Actor = Depends(get_current_user)
         CACHE.add(key=f"{user.id}.posts", value=[
                   deepcopy(posts), user.posts_soa])
 
-    print("posts=",user.posts_soa)
     return posts
 
 
@@ -461,6 +466,7 @@ async def get_shared(alias: str,  current_user: Actor = Depends(get_current_user
             with Pyro5.client.Proxy(f'PYRO:posts@{IP}:8002') as post_dht:
                 for i in usr_ob.items(["ShareActivity"]):
                     p = post_dht.search(i)
+                    print(p)
                     if p is not None:
                         dp = {}
                         dp["id"] = p.id
@@ -515,6 +521,7 @@ async def get_likes(alias: str,  current_user: Actor = Depends(get_current_user)
             with Pyro5.client.Proxy(f'PYRO:posts@{IP}:8002') as post_dht:
                 for i in usr_ob.items(["LikeActivity"]):
                     p = post_dht.search(i)
+                    print("LIKE", p.id)
                     if p is not None:
                         dp = {}
                         dp["id"] = p.id
@@ -554,7 +561,9 @@ async def like(post_id: str, current_user: Actor = Depends(get_current_user)):
             node.search(current_user.outbox).add(
                 "LikeActivity", ("Like"+ current_user.id + post_id, current_user, post_id)
             )
-
+            current_user.likes_soa += 1
+            current_user.likes_soa %= MAX_SAVE
+            
         with Pyro5.client.Proxy(f'PYRO:posts@{IP}:8002') as node:
             p = node.search(post_id)
             if p is None:
@@ -584,6 +593,8 @@ async def share_post(post_id: str, current_user: Actor = Depends(get_current_use
         with Pyro5.client.Proxy(f'PYRO:outboxes@{IP}:8002') as node:
             node.search(current_user.outbox).add(
                 "ShareActivity",("Share" + current_user.id +post_id, post_id))
+            current_user.shared_soa+=1
+            current_user.shared_soa%=MAX_SAVE
 
         with Pyro5.client.Proxy(f'PYRO:actors@{IP}:8002') as node:
             try:
@@ -723,19 +734,21 @@ async def unlike(post_id: str, current_user: Actor = Depends(get_current_user)):
     
     
 @app.get("/{alias}/info")
-def get_info(alias: str):
+async def get_info(alias: str, current_user: Actor = Depends(get_current_user)):
+    info={}
     with Pyro5.client.Proxy(f'PYRO:actors@{IP}:8002') as node:
         actor = node.search(alias)
         if actor is None:
             raise HTTPException(status_code=404, detail=f"Actor not found")
         else:
-            info={}
             info["username"]=actor.user_name
-            info["alias"]=actor.id
+            info["alias"]=alias
             info["followers"]=len(actor.followers)
             info["following"]=len(actor.following)
-            
-            return info
+            info["isFollowing"] = False
+            if alias != current_user.alias and alias in current_user.following:
+                info["isFollowing"] = True
+    return info
 
 @app.get("/{post_id}/get_shared_by")
 async def get_shared_info(post_id:str):

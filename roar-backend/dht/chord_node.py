@@ -208,14 +208,11 @@ class ChordNode(RObject):
                         self.objects[k].change -= self.change_data_successor
                         class_dict=self.get_dict(self.objects[k])
                         other_node.copy(class_dict)
-                        print("aaaa")    
                         self._pyroDaemon.unregister(self.objects[k])
                         self.predecessor_objects[k]=self.objects[k]
-                        print("for=",self.predecessor_objects)
                         keys_to_delete.append(k)
-                        print("bbbb")      
                     except Exception as e:
-                        print(str(e))
+                        print("EXCEPTION" + str(e))
             for k in keys_to_delete:
                 del self.objects[k]
 
